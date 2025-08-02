@@ -1,0 +1,15 @@
+# Virtual Environment
+venv/
+.venv/
+
+# Compiled Python files
+*.py[cod]
+__pycache__/
+*.egg-info/
+
+# Environment Variables
+.env
+
+# Log Files
+*.log
+*.err
