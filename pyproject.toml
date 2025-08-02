@@ -16,6 +16,7 @@ dependencies = [
     "transformers>=4.30",
     "einops",
     "matplotlib",
+    "numpy",
 ]
 
 [tool.setuptools]

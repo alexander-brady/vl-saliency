@@ -13,6 +13,7 @@ fig.show()
 from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 import torch.nn.functional as F
+import numpy as np
 
 
 def visualize_saliency(
@@ -37,17 +38,17 @@ def visualize_saliency(
     Returns:
         matplotlib.figure.Figure: The figure containing the saliency visualization.
     """
-    # Normalize saliency map to [0, 1]
-    saliency_map_resized = F.interpolate(
+    # Resize and normalize saliency map to [0, 1]
+    saliency_map = F.interpolate(
         saliency_map, size=image.size[::-1], mode='bilinear', align_corners=False
     )
-    saliency_map_resized = saliency_map_resized.detach().squeeze().cpu().numpy()
-    saliency_map_resized = (saliency_map_resized - saliency_map_resized.min()) / (saliency_map_resized.ptp() + 1e-8)
+    saliency_map = saliency_map.detach().squeeze().cpu().numpy()
+    saliency_map = (saliency_map - saliency_map.min()) / (np.ptp(saliency_map) + 1e-8)
 
     # Plot
     fig, ax = plt.subplots(figsize=figsize)
     ax.imshow(image)
-    im = ax.imshow(saliency_map_resized, cmap='coolwarm', alpha=0.5, **plot_kwargs)
+    im = ax.imshow(saliency_map, cmap='coolwarm', alpha=0.5, **plot_kwargs)
     if show_colorbar:
         fig.colorbar(im, ax=ax, label='Attention Weight')
     if title:
