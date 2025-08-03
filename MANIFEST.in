@@ -1,1 +1,1 @@
-recursive-include your_project/assets *.css
+recursive-include src/vl_saliency/assets *.css
