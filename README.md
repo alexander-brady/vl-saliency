@@ -40,8 +40,9 @@ visualizer = AGCAM(
   image_patch_size=16,  # Patch size for the your model
 )
 
-# Extract saliency map
-response, saliency_map = visualizer.generate(**inputs)
+# Generate response and compute saliency map
+response = visualizer.generate(**inputs)
+saliency_map = visualizer.compute_saliency(response, token_index=0)  # Change token_index as needed
 
 # Visualize the saliency map
 fig = visualize_saliency(saliency_map, image, colormap='viridis', title="Saliency Map")

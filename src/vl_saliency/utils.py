@@ -67,15 +67,16 @@ def render_token_ids(
     token_ids: torch.Tensor,
     processor: ProcessorMixin,
     gen_index: Optional[int] = None,
+    skip_tokens: Optional[Union[int, List[int]]] = None
 ):
     """
     Visualizes the generated text from the model.
-    TODO: Make this better, works for now. Inspiration: Guidance Library
     
     Args:
         generated_ids (torch.Tensor): The generated token IDs.
         tokenizer: The tokenizer used to decode the IDs.
-        gen_index (Optional[int]): Index from which tokens are considered generated. If None, all tokens are considered prompt.        
+        gen_index (Optional[int]): Index from which tokens are considered generated. If None, all tokens are considered prompt. 
+        skip_tokens (Optional[Union[int, List[int]]]): Token IDs to skip in the visualization.        
     Returns:
         matplotlib.figure.Figure: The figure containing the generated text visualization.
     """
@@ -146,8 +147,15 @@ def render_token_ids(
     """
 
     html = style_block + "<div>"
+    
+    skip_tokens = skip_tokens if skip_tokens is not None else []
+    if isinstance(skip_tokens, int):
+        skip_tokens = [skip_tokens]
 
     for i, (token, tid) in enumerate(zip(tokens, token_ids)):
+        if tid in skip_tokens:
+            continue
+        
         if token in ["\\n", "\n", "Ċ", "▁\n"]:
             html += f'<span class="token-newline">{token}</span><br>'
             continue
