@@ -17,6 +17,7 @@ dependencies = [
     "einops",
     "matplotlib",
     "numpy",
+    "IPython",
 ]
 
 [tool.setuptools]

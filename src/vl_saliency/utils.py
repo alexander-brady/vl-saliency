@@ -11,14 +11,19 @@ fig.show()
 ```
 """
 from typing import Optional, Tuple
-import matplotlib.pyplot as plt
-import torch.nn.functional as F
+
 import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+from IPython.display import display, HTML
+import torch
+import torch.nn.functional as F
+from transformers import ProcessorMixin
 
 
 def visualize_saliency(
-    saliency_map,
-    image,
+    saliency_map: torch.tensor,
+    image: Image.Image,
     title: Optional[str] = "Saliency Map",
     figsize: Tuple[int, int] = (6, 6),
     show_colorbar: bool = True,
@@ -55,4 +60,118 @@ def visualize_saliency(
         ax.set_title(title)
     ax.axis("off")
     fig.tight_layout()
-    return fig  
+    return fig
+
+
+def render_token_ids(
+    token_ids: torch.Tensor,
+    processor: ProcessorMixin,
+    gen_index: Optional[int] = None,
+):
+    """
+    Visualizes the generated text from the model.
+    TODO: Make this better, works for now. Inspiration: Guidance Library
+    
+    Args:
+        generated_ids (torch.Tensor): The generated token IDs.
+        tokenizer: The tokenizer used to decode the IDs.
+        gen_index (Optional[int]): Index from which tokens are considered generated. If None, all tokens are considered prompt.        
+    Returns:
+        matplotlib.figure.Figure: The figure containing the generated text visualization.
+    """
+    token_ids = token_ids.tolist()[0]
+    tokens = processor.tokenizer.convert_ids_to_tokens(token_ids, skip_special_tokens=False)
+    
+    style_block = """
+    <style>
+    .token-container {
+        position: relative;
+        display: inline-block;
+        padding: 0 2px;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    }
+
+    .token-content {
+        display: block;
+        border-bottom: 1px solid #999;
+        text-align: center;
+        transition: border-color 0.2s ease;
+    }
+
+    .token-container:hover .token-content {
+        border-color: #1e90ff;
+    }
+
+    .tooltip {
+        visibility: hidden;
+        background-color: #333;
+        color: #fff;
+        text-align: center;
+        border-radius: 4px;
+        padding: 4px 8px;
+        position: absolute;
+        z-index: 1;
+        bottom: 120%;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 14px;
+        font-family: sans-serif;
+        opacity: 0;
+        transition: opacity 0.2s;
+    }
+
+    .token-container:hover .tooltip {
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .token-newline {
+        display: inline-block;
+        opacity: 0.4;
+        vertical-align: bottom;
+    }
+
+    .token-special {
+        display: inline-block;
+        opacity: 0.4;
+        font-family: monospace;
+        margin: 0 2px;
+    }
+
+    .token-prefix {
+        opacity: 0.4;
+    }
+    </style>
+    """
+
+    html = style_block + "<div>"
+
+    for i, (token, tid) in enumerate(zip(tokens, token_ids)):
+        if token in ["\\n", "\n", "Ċ", "▁\n"]:
+            html += f'<span class="token-newline">{token}</span><br>'
+            continue
+
+        if token.startswith("<") and token.endswith(">"):
+            html += f'<span class="token-special">&lt;{token[1:-1]}&gt;</span>'
+            continue
+
+        background = "#d5fdd5" if gen_index is not None and i >= gen_index else "#f5f5f5"
+
+        # Show faded leading space token (▁ or Ġ), if present
+        if token.startswith(("▁", "Ġ")):
+            prefix = token[0]
+            body = token[1:]
+            display_token = f'<span class="token-prefix">{prefix}</span>{body}'
+        else:
+            display_token = token
+
+        html += (
+            f'<span class="token-container" style="background:{background};">'
+            f'<div class="token-content">{display_token}</div>'
+            f'<div class="tooltip">Token ID: {tid}</div>'
+            f'</span>'
+        )
+
+    html += "</div>"
+    display(HTML(html))
