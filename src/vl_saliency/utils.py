@@ -10,16 +10,27 @@ fig = visualize_saliency(saliency_map, image, title="My Saliency Map", figsize=(
 fig.show()
 ```
 """
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Union, List
+import pathlib
 
 import numpy as np
-import matplotlib.pyplot as plt
 from PIL import Image
+import matplotlib.pyplot as plt
 from IPython.display import display, HTML
+
 import torch
 import torch.nn.functional as F
 from transformers import ProcessorMixin
 
+# Load only once and reuse
+_token_style_css = None
+
+def _load_token_css():
+    global _token_style_css
+    if _token_style_css is None:
+        css_path = pathlib.Path(__file__).parent / "assets" / "token_style.css"
+        _token_style_css = f"<style>{css_path.read_text()}</style>"
+    return _token_style_css
 
 def visualize_saliency(
     saliency_map: torch.tensor,
@@ -64,7 +75,7 @@ def visualize_saliency(
 
 
 def render_token_ids(
-    token_ids: torch.Tensor,
+    generated_ids: torch.Tensor,
     processor: ProcessorMixin,
     gen_index: Optional[int] = None,
     skip_tokens: Optional[Union[int, List[int]]] = None
@@ -77,77 +88,12 @@ def render_token_ids(
         tokenizer: The tokenizer used to decode the IDs.
         gen_index (Optional[int]): Index from which tokens are considered generated. If None, all tokens are considered prompt. 
         skip_tokens (Optional[Union[int, List[int]]]): Token IDs to skip in the visualization.        
-    Returns:
-        matplotlib.figure.Figure: The figure containing the generated text visualization.
     """
-    token_ids = token_ids.tolist()[0]
+    token_ids = generated_ids.tolist()[0]
     tokens = processor.tokenizer.convert_ids_to_tokens(token_ids, skip_special_tokens=False)
-    
-    style_block = """
-    <style>
-    .token-container {
-        position: relative;
-        display: inline-block;
-        padding: 0 2px;
-        font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
-    }
 
-    .token-content {
-        display: block;
-        border-bottom: 1px solid #999;
-        text-align: center;
-        transition: border-color 0.2s ease;
-    }
+    html = _load_token_css() + "<div>"
 
-    .token-container:hover .token-content {
-        border-color: #1e90ff;
-    }
-
-    .tooltip {
-        visibility: hidden;
-        background-color: #333;
-        color: #fff;
-        text-align: center;
-        border-radius: 4px;
-        padding: 4px 8px;
-        position: absolute;
-        z-index: 1;
-        bottom: 120%;
-        left: 50%;
-        transform: translateX(-50%);
-        white-space: nowrap;
-        font-size: 14px;
-        font-family: sans-serif;
-        opacity: 0;
-        transition: opacity 0.2s;
-    }
-
-    .token-container:hover .tooltip {
-        visibility: visible;
-        opacity: 1;
-    }
-
-    .token-newline {
-        display: inline-block;
-        opacity: 0.4;
-        vertical-align: bottom;
-    }
-
-    .token-special {
-        display: inline-block;
-        opacity: 0.4;
-        font-family: monospace;
-        margin: 0 2px;
-    }
-
-    .token-prefix {
-        opacity: 0.4;
-    }
-    </style>
-    """
-
-    html = style_block + "<div>"
-    
     skip_tokens = skip_tokens if skip_tokens is not None else []
     if isinstance(skip_tokens, int):
         skip_tokens = [skip_tokens]
@@ -164,8 +110,8 @@ def render_token_ids(
             html += f'<span class="token-special">&lt;{token[1:-1]}&gt;</span>'
             continue
 
-        background = "#d5fdd5" if gen_index is not None and i >= gen_index else "#f5f5f5"
-
+        token_class = "prompt" if gen_index is None or i < gen_index else "generated"
+        
         # Show faded leading space token (▁ or Ġ), if present
         if token.startswith(("▁", "Ġ")):
             prefix = token[0]
@@ -175,9 +121,9 @@ def render_token_ids(
             display_token = token
 
         html += (
-            f'<span class="token-container" style="background:{background};">'
+            f'<span class="token-container {token_class}";">'
             f'<div class="token-content">{display_token}</div>'
-            f'<div class="tooltip">Token ID: {tid}</div>'
+            f'<div class="tooltip">Token Index: {i}</div>'
             f'</span>'
         )
 

@@ -1,7 +1,9 @@
-"""Saliency visualizer, modified from
+"""
+Saliency visualizer, built from
 https://github.com/LeemSaebom/Attention-Guided-CAM-Visual-Explanations-of-Vision-Transformer-Guided-by-Self-Attention/
 """
 from typing import Tuple, Sequence, Optional
+
 import torch
 import torch.nn.functional as F
 from einops.layers.torch import Reduce, Rearrange
@@ -9,7 +11,8 @@ from transformers import PreTrainedModel, ProcessorMixin
 
 _KEEP = object()
 
-class AGCAM:
+
+class SaliencyExtractor:
     """
     Implementation of Attention-Guided CAM (AGCAM) for Vision Transformers.
     
@@ -56,11 +59,12 @@ class AGCAM:
         self._generated_ids = None
         self._image_patches = None
 
-    def generate(self, **inputs) -> Tuple[torch.Tensor, torch.Tensor]:
+    def generate(self, visualize_tokens: bool = False, **inputs) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Generate model response and prepare the attention and gradients for saliency computation.
         
         Args:
+            visualize_tokens (bool): whether to visualize the generated tokens (default: False)
             inputs (dict): processed inputs to the model, typically including 'input_ids', 'attention_mask', etc.
             
         Returns:
@@ -113,23 +117,33 @@ class AGCAM:
         # Reshape to [num_images, height * width]
         self._image_patches = image_token_indices.view(-1, num_patches)  # [num_images, num_patches]
         
-        return generated_ids    
-    
+        if visualize_tokens:
+            from .utils import render_token_ids            
+            generated_token_start = inputs["input_ids"].shape[1]
+            render_token_ids(
+                generated_ids,
+                self.processor,
+                generated_token_start,
+                skip_tokens=self.image_token_id,  # Skip image token ID
+            )
+
+        return generated_ids
+
     def compute_saliency(
         self, 
-        token_id: int, 
-        image_id: int = 0, 
+        token_index: int, 
+        image_index: int = 0, 
         *,
         head_fusion: Optional[str] = None,
         layer_fusion: Optional[str] = None,
         extracted_layers: None | int | Sequence[int] | object = _KEEP,
     ) -> torch.Tensor:
         """
-        Compute the saliency map for a specific token in the image. 
+        Compute the saliency map between a specific token and image. 
         
         Args:
-            token_id (int): The token ID to compute the saliency for.
-            image_id (int): The index of the image to compute the saliency for (default: 0).
+            token_index (int): The token index in generated_tokens to compute the saliency for.
+            image_index (int): The index of the image to compute the saliency for (default: 0).
             extracted_layers (None | int | Sequence[int]): Override the layers to extract for this saliency computation.
             head_fusion (Optional[str]): Override the head-wise aggregation for this saliency computation.
             layer_fusion (Optional[str]): Override the layer-wise aggregation for this saliency computation.
@@ -154,10 +168,10 @@ class AGCAM:
         attn = extract_layers(self._attn, extracted_layers)
         grad = extract_layers(self._grad, extracted_layers)
 
-        patch_indices = self._image_patches[image_id]
+        patch_indices = self._image_patches[image_index]
 
-        attn_img = attn[:, :, token_id, patch_indices]  # [layers, heads, patch_tokens]
-        grad_img = grad[:, :, token_id, patch_indices]  # [layers, heads, patch_tokens]
+        attn_img = attn[:, :, token_index, patch_indices]  # [layers, heads, 1, patch_tokens]
+        grad_img = grad[:, :, token_index, patch_indices]  # [layers, heads, 1, patch_tokens]
 
         grad_img = F.relu(grad_img)
         attn_img = torch.sigmoid(attn_img)

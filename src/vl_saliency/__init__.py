@@ -3,15 +3,18 @@ Saliency Visualizer for Vision-Language Models using the Attention-Guided CAM (A
 
 Example usage:
 ```python
-from vl_saliency import AGCAM
+from vl_saliency import SaliencyExtractor
 
 model = ...  # Load your Vision Transformer model
 processor = ...  # Load your processor for tokenization and image preprocessing
 inputs = processor(images=image, text=text, return_tensors="pt")
 
-# Initialize AGCAM with the model and processor
-agcam = AGCAM(model, pad_token_id=processor.tokenizer.pad_token_id)
-generated_ids, saliency = agcam.generate(**inputs)
+# Initialize SaliencyExtractor with the model and processor
+extractor = SaliencyExtractor(model, processor)
+
+# Generate model output and saliency map for the first token
+generated_ids = extractor.generate(**inputs)
+saliency_map = extractor.compute_saliency(0)
 ```
 """
-from vl_saliency.AGCAM import AGCAM
+from vl_saliency.extractor import SaliencyExtractor
