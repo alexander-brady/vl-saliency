@@ -161,7 +161,7 @@ class SaliencyExtractor:
             if indices is None:
                 return data
             if isinstance(indices, int):
-                return data[indices:] if indices > 0 else data[:indices]
+                return data[:indices] if indices > 0 else data[indices:]
             return torch.stack([data[i] for i in indices if i < len(data)])
 
         extracted_layers = extracted_layers if extracted_layers is not _KEEP else self.extracted_layers
