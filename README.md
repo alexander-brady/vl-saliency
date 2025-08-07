@@ -14,6 +14,12 @@ This repository provides tools for extracting saliency maps from vision-language
     pip install -e . # Install the package in editable mode
     pip install -r requirements.txt
     ```
+
+## Project Structure
+
+- `src/vl_saliency/`: Contains the main code for saliency extraction.
+- `notebooks/`: Example notebooks demonstrating how to use the saliency extractor with different vision-language models.
+- `scripts/`: Shell scripts for starting Jupyter servers on the [ETH Zurich Euler cluster](https://scicomp.ethz.ch/wiki/Euler).
     
 ## Usage
 
