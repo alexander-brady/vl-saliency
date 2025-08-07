@@ -101,14 +101,6 @@ def render_token_ids(
     for i, (token, tid) in enumerate(zip(tokens, token_ids)):
         if tid in skip_tokens:
             continue
-        
-        if token in ["\\n", "\n", "Ċ", "▁\n"]:
-            html += f'<span class="token-newline">{token}</span><br>'
-            continue
-
-        if token.startswith("<") and token.endswith(">"):
-            html += f'<span class="token-special">&lt;{token[1:-1]}&gt;</span>'
-            continue
 
         token_class = "prompt" if gen_index is None or i < gen_index else "generated"
         
@@ -117,6 +109,8 @@ def render_token_ids(
             prefix = token[0]
             body = token[1:]
             display_token = f'<span class="token-prefix">{prefix}</span>{body}'
+        elif token.startswith("<") and token.endswith(">"):
+            display_token = f'<span class="token-special">&lt;{token[1:-1]}&gt;</span>'
         else:
             display_token = token
 
@@ -126,6 +120,9 @@ def render_token_ids(
             f'<div class="tooltip">Token Index: {i}</div>'
             f'</span>'
         )
+        
+        if token in ["\\n", "\n", "Ċ", "▁\n"]:
+            html += "<br>"
 
     html += "</div>"
     display(HTML(html))
