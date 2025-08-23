@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "vl-saliency"
 version = "0.1.0"
-description = "Extracting saliency maps from vision-language models using Attention-Guided CAM (AGCAM)"
+description = "Text-to-Image Attention Visualization for Vision-Language Models."
 authors = [{ name = "Alexander Brady" }]
 license = { file = "LICENSE" }
 readme = "README.md"
@@ -18,14 +18,11 @@ dependencies = [
     "matplotlib",
     "numpy",
     "IPython",
+    "pillow",
 ]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
-[tool.setuptools.package-data]
-vl_saliency = ["assets/*.css"]

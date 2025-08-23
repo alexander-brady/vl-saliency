@@ -1,6 +1,13 @@
 # Vision-Language Saliency Extraction
 
-This repository provides tools for extracting saliency maps from vision-language models, extending the [Attention-Guided CAM (AGCAM)](https://github.com/LeemSaebom/Attention-Guided-CAM-Visual-Explanations-of-Vision-Transformer-Guided-by-Self-Attention) method originally developed for Vision Transformers (ViTs) to vision-language architectures.
+This repository provides tools for extracting saliency maps from vision-language models, extending classic method originally developed for Vision Transformers (ViTs) to modern vision-language architectures.
+
+
+**Project Structure**
+
+- `src/vl_saliency/`: Contains the main code for saliency extraction.
+- `notebooks/`: Example notebooks demonstrating how to use the saliency extractor with different vision-language models.
+- `scripts/`: Shell scripts for starting Jupyter servers on the [ETH Zurich Euler cluster](https://scicomp.ethz.ch/wiki/Euler).
 
 ## Installation
 
@@ -12,64 +19,66 @@ This repository provides tools for extracting saliency maps from vision-language
 2. Install the required packages:
    ```bash
     pip install -e . # Install the package in editable mode
-    pip install -r requirements.txt  # Additional dependencies for notebooks
+    pip install -r requirements.txt  # Additional dependencies for notebooks (Optional)
     ```
-
-## Project Structure
-
-- `src/vl_saliency/`: Contains the main code for saliency extraction.
-- `notebooks/`: Example notebooks demonstrating how to use the saliency extractor with different vision-language models.
-- `scripts/`: Shell scripts for starting Jupyter servers on the [ETH Zurich Euler cluster](https://scicomp.ethz.ch/wiki/Euler).
     
 ## Usage
 
-> See the [example notebook](notebooks/gemma.ipynb) for a complete example of how to use the AGCAM saliency extractor with a Gemma3 vision-language model.
+> See the [example notebook](notebooks/quickstart.ipynb) for a complete example of how to use the saliency extractor with a Gemma3 vision-language model.
 
-To extract saliency maps for a vision-language model using AGCAM, you can use the following code snippet:
+Quickstart code snippet:
 
 ```python
-from vl_saliency import SaliencyExtractor
-from vl_saliency.utils import visualize_saliency
+from vl_saliency import SaliencyTrace
+from vl_saliency.viz import overlay
 
 # Initialize the model and input prompt
 model = AutoModel.from_pretrained("model_name")  # Replace with your model name
 processor = AutoProcessor.from_pretrained("model_name")  # Replace with your processor name
 
 image = PIL.Image.open("path_to_image.jpg")  # Load your image
-inputs = processor(text="Your input text", images=image, return_tensors="pt")
+inputs = processor(text="Your prompt", images=image, return_tensors="pt")
 
 # Initialize the saliency extractor
-extractor = SaliencyExtractor(
-  model=model,
-  pad_token_id=processor.tokenizer.pad_token_id,
-  image_token_id=262144,  # Image soft token ID for your models
-  image_patch_size=16,  # Patch size for the your model
-)
+trace = SaliencyTrace(model, processor)
 
 # Generate response and compute saliency map
-response = extractor.generate(**inputs)
-saliency_map = extractor.compute_saliency(response, token_index=0)  # Change token_index as needed
+with torch.inference_mode():
+    generated_ids = model.generate(**inputs, do_sample=True, max_new_tokens=200) 
+    
+# Compute attention and gradients
+trace.capture(**inputs, generated_ids=generated_ids, visualize_tokens=True) 
+
+# Compute the saliency map using the AGCAM (default) algorithm
+saliency_map = trace.compute_saliency(token=200)  # Change token_index as needed
 
 # Visualize the saliency map
-fig = visualize_saliency(saliency_map, image, colormap='viridis', title="Saliency Map")
+fig = overlay(saliency_map, image, title="Saliency Map")
 fig.show()  # or save the plot using fig.savefig("saliency_map.png")
 ```
 
-## Attribution
+## Saliency Computations
 
-We are not affiliated with the authors of the AGCAM paper. If you use this code, please cite the original authors:
+> See the [variations notebook](notebooks/variations.ipynb) for a complete example of different saliency computation techniques available.
 
-```bibtex
-@inproceedings{leem2024attention,
-  title={Attention guided CAM: visual explanations of vision transformer guided by self-attention},
-  author={Leem, Saebom and Seo, Hyunseok},
-  booktitle={Proceedings of the AAAI conference on artificial intelligence},
-  volume={38},
-  number={4},
-  pages={2956--2964},
-  year={2024}
-}
-```
+The module is easily customizable, allowing for different saliency computation methodologies. Default parameters can be set in the `SaliencyTrace` constructor, and can be overridden on a per-call basis. The following parameters can be adjusted:
+
+- `layers`: Specifies the attention layers to include in the saliency computation (e.g., `[-1]` for the last layer only). Default: `ALL_LAYERS`
+- `layer_reduce`: Specifies the reduction method for layers (e.g., `mean`, `max`). Default: `sum`
+- `head_reduce`: Specifies the reduction method for heads (e.g., `mean`, `max`). Default: `sum`
+- `method`: Specifies the saliency computation method (e.g., `AGCAM`, `GRADCAM`). Default: `AGCAM`. See below.
+
+**Method**
+
+This can be a string or a callable. If callable, it must accept the attention and gradient tensors and return a mask tensor of the same shape.
+
+Additional kwargs can be passed to the saliency computation methods in the `trace.map` call.
+
+The following methods are implemented:
+- `AGCAM`: Attention-guided Class Activation Mapping
+- `GRADCAM`: Gradient-weighted Class Activation Mapping
+- `ATTN`: Raw attention map. Parameters: `sigmoid: bool`.
+- `GRAD`: Raw gradient map. Parameters: `relu: bool`, `abs: bool`.
 
 ## License
 
