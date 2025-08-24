@@ -1,6 +1,6 @@
 # Vision-Language Saliency Extraction
 
-This repository provides tools for extracting saliency maps from vision-language models, extending classic method originally developed for Vision Transformers (ViTs) to modern vision-language architectures.
+This repository provides tools for extracting saliency maps from vision-language models, extending classic methods originally developed for Vision Transformers (ViTs) to modern vision-language architectures.
 
 
 **Project Structure**
