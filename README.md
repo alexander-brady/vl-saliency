@@ -42,7 +42,7 @@ inputs = processor(text="Your prompt", images=image, return_tensors="pt")
 # Initialize the saliency extractor
 trace = SaliencyTrace(model, processor)
 
-# Generate response and compute saliency map
+# Generate response 
 with torch.inference_mode():
     generated_ids = model.generate(**inputs, do_sample=True, max_new_tokens=200) 
     
