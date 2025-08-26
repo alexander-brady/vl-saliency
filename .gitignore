@@ -6,6 +6,7 @@ venv/
 *.py[cod]
 __pycache__/
 *.egg-info/
+build/
 
 # Environment Variables
 .env

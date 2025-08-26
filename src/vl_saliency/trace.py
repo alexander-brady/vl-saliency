@@ -121,7 +121,8 @@ class SaliencyTrace:
             raise ValueError(f"Expected {expected_img_tkns} image tokens, but got {image_token_indices.numel()}")
 
         self._image_patches = torch.split(image_token_indices, patch_sizes) # Tuple of tensors
-            
+        self._image_patches = self._image_patches.detach().cpu()
+        
         device = next(self.model.parameters()).device
         pad_id = self.processor.tokenizer.pad_token_id
         
