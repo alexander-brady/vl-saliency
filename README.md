@@ -2,14 +2,21 @@
 
 This repository provides tools for extracting saliency maps from vision-language models, extending classic methods originally developed for Vision Transformers (ViTs) to modern vision-language architectures.
 
+To use in your project, simply download from PyPI:
+
+```bash
+pip install vl-saliency
+```
+
 
 **Project Structure**
 
 - `src/vl_saliency/`: Contains the main code for saliency extraction.
+- `tests/`: Contains unit tests for the saliency extraction code.
 - `notebooks/`: Example notebooks demonstrating how to use the saliency extractor with different vision-language models.
 - `scripts/`: Shell scripts for starting Jupyter servers on the [ETH Zurich Euler cluster](https://scicomp.ethz.ch/wiki/Euler).
 
-## Installation
+## Local Installation
 
 1. Create and activate a virtual environment:
    ```bash
