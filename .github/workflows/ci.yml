@@ -8,12 +8,12 @@ on:
       - "tests/**"
       - ".github/workflows/ci.yml"
       - "pyproject.toml"
-  # pull_request:
-  #   paths:
-  #     - "src/**"
-  #     - "tests/**"
-  #     - ".github/workflows/ci.yml"
-  #     - "pyproject.toml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - ".github/workflows/ci.yml"
+      - "pyproject.toml"
 
 permissions:
   contents: read
