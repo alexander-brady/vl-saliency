@@ -25,6 +25,8 @@ This repository provides tools for extracting saliency maps from vision-language
 
 > See the [example notebook](notebooks/quickstart.ipynb) for a complete example of how to use the saliency extractor with a Gemma3 vision-language model.
 
+This library is compatible with any Huggingface Image-Text-to-Text model.
+
 Quickstart code snippet:
 
 ```python
