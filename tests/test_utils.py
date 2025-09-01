@@ -1,6 +1,6 @@
 import torch
 
-from vl_saliency.utils import (
+from vl_saliency.core.utils import (
     ALL_LAYERS,
     _get_image_token_id,
     _get_vision_patch_shape,

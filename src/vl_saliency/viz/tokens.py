@@ -23,7 +23,7 @@ def render_token_ids(
 def render_token_ids(
     generated_ids: torch.Tensor,
     processor: ProcessorMixin,
-    return_html: Literal[False],
+    return_html: Literal[False] = ...,
     gen_start: int = ...,
     skip_tokens: int | Sequence[int] | None = ...,
 ) -> None: ...

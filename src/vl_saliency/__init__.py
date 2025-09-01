@@ -22,6 +22,6 @@ saliency_map = trace.map(0)
 ```
 """
 
-from vl_saliency.trace import SaliencyTrace
+from vl_saliency.core.trace import SaliencyTrace
 
 __all__ = ["SaliencyTrace"]

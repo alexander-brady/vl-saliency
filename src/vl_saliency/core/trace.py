@@ -5,7 +5,7 @@ from einops.layers.torch import Rearrange, Reduce
 from transformers import PreTrainedModel, ProcessorMixin
 
 from .logger import get_logger
-from .methods import resolve
+from ..methods import resolve
 from .utils import (
     ALL_LAYERS,
     _get_image_token_id,
@@ -182,7 +182,7 @@ class SaliencyTrace:
         self.model.train(was_training)
 
         if visualize_tokens:
-            from .viz.tokens import render_token_ids
+            from ..viz.tokens import render_token_ids
 
             render_token_ids(
                 generated_ids=generated_ids,

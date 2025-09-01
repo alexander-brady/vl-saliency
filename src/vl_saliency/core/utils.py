@@ -38,13 +38,22 @@ def _select_layers(
 ) -> torch.Tensor:
     """
     Extract specific layers from a tensor.
-        - None: use all layers
-        - int > 0: use the first `extracted_layers` layers
-        - int < 0: use the last `abs(extracted_layers)` layers
-        - Sequence[int]: use specific layer indices
+    
+    Args:
+        Indices (int | object | Sequence[int]): The indices of the layers to extract.
+            - None: use all layers
+            - int > 0: use the first `extracted_layers` layers
+            - int < 0: use the last `abs(extracted_layers)` layers
+            - Sequence[int]: use specific layer indices
+    
+    Raises:
+        ValueError: If the layer indices are invalid.
     """
     if indices is ALL_LAYERS:
         return tensors
     if isinstance(indices, int):
         return tensors[:indices] if indices > 0 else tensors[indices:]
-    return tensors[indices]
+    elif isinstance(indices, Sequence):
+        return tensors[indices]
+    else:
+        raise ValueError(f"Invalid layer indices: {indices}")

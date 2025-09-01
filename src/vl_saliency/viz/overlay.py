@@ -40,8 +40,7 @@ def overlay(
     saliency_map = (saliency_map - saliency_map.min()) / (np.ptp(saliency_map) + 1e-8)
 
     # Create fig/ax if needed
-    created_fig = ax is None
-    if created_fig:
+    if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
     else:
         fig = ax.figure
@@ -53,7 +52,7 @@ def overlay(
     defaults = {"cmap": "inferno", "alpha": 0.5, **plot_kwargs}
     im = ax.imshow(saliency_map, **defaults)
 
-    if show_colorbar and created_fig:
+    if show_colorbar:
         fig.colorbar(im, ax=ax, label="Attention Weight")
 
     if title:
@@ -62,6 +61,4 @@ def overlay(
     ax.axis("off")
     fig.tight_layout()
 
-    if created_fig:
-        fig.tight_layout()
     return fig
