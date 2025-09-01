@@ -1,5 +1,5 @@
 import logging
-from vl_saliency.logging import get_logger
+from vl_saliency.logger import get_logger
 
 
 def test_logger_emits_messages_respects_level(capsys):

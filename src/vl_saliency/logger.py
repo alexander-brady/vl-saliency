@@ -1,6 +1,6 @@
+import sys
 import logging
 from datetime import datetime
-
 
 class MinimalFormatter(logging.Formatter):
     def format(self, record):
@@ -12,8 +12,10 @@ class MinimalFormatter(logging.Formatter):
 def get_logger(name: str = "app", level=logging.INFO) -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(stream=sys.stdout)
         handler.setFormatter(MinimalFormatter())
         logger.addHandler(handler)
+
+    logger.propagate = False # Avoid double logging
     logger.setLevel(level)
     return logger
