@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "vl-saliency"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Text-to-Image Attention Visualization for Vision-Language Models."
 authors = [{ name = "Alexander Brady" }]
 license = { file = "LICENSE" }
@@ -31,6 +31,11 @@ dev = [
 
 [tool.setuptools]
 package-dir = {"" = "src"}
+
+[tool.setuptools_scm]
+tag_regex = '^(?:v)?(?P<version>\d+\.\d+\.\d+)$'
+fallback_version = "0.0.0"
+write_to = "src/vl_saliency/_version.py"
 
 [tool.setuptools.packages.find]
 where = ["src"]
