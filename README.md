@@ -18,13 +18,14 @@ This repository provides tools for extracting saliency maps from vision-language
    ```
 2. Install the required packages:
    ```bash
-    pip install -e . # Install the package in editable mode
-    pip install -r requirements.txt  # Additional dependencies for notebooks (Optional)
+    pip install -e .[dev] # Install the package in editable mode
     ```
     
 ## Usage
 
 > See the [example notebook](notebooks/quickstart.ipynb) for a complete example of how to use the saliency extractor with a Gemma3 vision-language model.
+
+This library is compatible with any Huggingface Image-Text-to-Text model.
 
 Quickstart code snippet:
 
