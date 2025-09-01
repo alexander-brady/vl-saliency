@@ -22,6 +22,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "mypy",
     "ruff",
     "pytest",
     "pytest-cov",
@@ -44,3 +45,9 @@ ignore = ["E501"]                    # let the formatter handle wrapping
 
 [tool.ruff.lint.isort]
 known-first-party = ["vl_saliency"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["src", "tests"]
+exclude = ["\\.venv", "env", "build", "dist"]
+follow_imports = "skip"  # don't analyze third-party libs
