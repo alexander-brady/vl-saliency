@@ -17,6 +17,7 @@ dependencies = [
     "einops",
     "matplotlib",
     "numpy",
+    "pillow",
 ]
 
 [project.optional-dependencies]
@@ -25,7 +26,6 @@ dev = [
     "pytest",
     "pytest-cov",
     "ipython",
-    "pillow",
 ]
 
 [tool.setuptools]
