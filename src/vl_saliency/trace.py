@@ -1,14 +1,12 @@
-from typing import Tuple, Sequence, Callable, Optional
+from typing import Sequence, Callable, Optional
 
 import torch
-import torch.nn.functional as F
 from einops.layers.torch import Reduce, Rearrange
 from transformers import PreTrainedModel, ProcessorMixin
 
-from . import methods
-from .methods.registry import resolve
+from .methods import resolve
 from .utils import ALL_LAYERS, _get_image_token_id, _get_vision_patch_shape, _select_layers
-from .logging import get_logger
+from .logger import get_logger
 
 
 logger = get_logger(__name__)
@@ -68,6 +66,10 @@ class SaliencyTrace:
         self.layers = layers
         self.head_reduce = head_reduce
         self.layer_reduce = layer_reduce
+        
+        # Runtime caches (populated by capture)
+        self._attn: Optional[torch.Tensor] = None
+        self._grad: Optional[torch.Tensor] = None
 
 
     def capture(

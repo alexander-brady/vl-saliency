@@ -1,5 +1,5 @@
 import html
-from typing import Optional, Union, Sequence
+from typing import Literal, Optional, Union, Sequence, overload
 
 import torch
 from transformers import ProcessorMixin
@@ -10,12 +10,29 @@ except Exception:  # pragma: no cover
     display = HTML = None
 
 
+@overload
 def render_token_ids(
     generated_ids: torch.Tensor,
     processor: ProcessorMixin,
+    return_html: Literal[True],
+    gen_start: int = ...,
+    skip_tokens: Optional[Union[int, Sequence[int]]] = ...,
+) -> str: ...
+@overload
+def render_token_ids(
+    generated_ids: torch.Tensor,
+    processor: ProcessorMixin,
+    return_html: Literal[False],
+    gen_start: int = ...,
+    skip_tokens: Optional[Union[int, Sequence[int]]] = ...,
+) -> None: ...
+
+def render_token_ids(
+    generated_ids: torch.Tensor,
+    processor: ProcessorMixin,
+    return_html: bool = False,
     gen_start: int = 0,
     skip_tokens: Optional[Union[int, Sequence[int]]] = None,
-    return_html: bool = False
 ) -> Optional[str]:
     """
     Visualizes the generated text from the model.

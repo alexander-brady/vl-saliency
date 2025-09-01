@@ -5,3 +5,4 @@ Each method takes as input the attention maps and gradients, and returns a mask 
 """
 from . import primitives
 from . import cam
+from .registry import resolve
