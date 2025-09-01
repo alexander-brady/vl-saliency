@@ -29,6 +29,9 @@ dev = [
     "ipython",
 ]
 
+[project.urls]
+github = "https://github.com/alexander-brady/vl-saliency"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
