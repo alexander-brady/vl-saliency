@@ -57,3 +57,9 @@ files = ["src", "tests"]
 exclude = ["\\.venv", "env", "build", "dist"]
 follow_imports = "skip"  # don't analyze third-party libs
 ignore_missing_imports = true
+
+[tool.coverage.report]
+omit = [
+    "src/vl_saliency/_version.py",
+    "*/__init__.py",
+]

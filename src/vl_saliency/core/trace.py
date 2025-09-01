@@ -63,9 +63,7 @@ class SaliencyTrace:
             )
 
         # Store saliency computation method
-        if isinstance(method, str):
-            method = resolve(method)
-        self.method = method
+        self.method = resolve(method) if isinstance(method, str) else method
 
         # Store saliency aggregation functions
         self.layers = layers
@@ -111,7 +109,7 @@ class SaliencyTrace:
 
         # Get image token indices
         image_grid_thw = kwargs.get("image_grid_thw", None)  # Common in Qwen Models
-        if image_grid_thw is not None:  # Common in Qwen Models
+        if image_grid_thw is not None:
             image_grid_thw = torch.as_tensor(image_grid_thw).to(
                 self.model.device, dtype=torch.int32
             )

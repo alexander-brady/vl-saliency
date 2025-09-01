@@ -1,3 +1,4 @@
+import pytest
 import torch
 
 from vl_saliency.core.utils import (
@@ -88,3 +89,13 @@ def test_select_layers_with_explicit_indices_sequence():
         and torch.equal(out[1], t[2])
         and torch.equal(out[2], t[5])
     )
+
+
+def test_select_layers_raises_on_invalid_indices():
+    t = torch.arange(30).view(6, 5)
+    with pytest.raises(IndexError):
+        _select_layers(t, [0, 2, 6])  # 6 is out of bounds
+
+    _WRONG_INPUT: object = object()
+    with pytest.raises(ValueError):
+        _select_layers(t, _WRONG_INPUT)
