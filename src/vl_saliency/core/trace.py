@@ -4,8 +4,8 @@ import torch
 from einops.layers.torch import Rearrange, Reduce
 from transformers import PreTrainedModel, ProcessorMixin
 
-from .logger import get_logger
 from ..methods import resolve
+from .logger import get_logger
 from .utils import (
     ALL_LAYERS,
     _get_image_token_id,

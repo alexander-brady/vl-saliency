@@ -56,3 +56,4 @@ python_version = "3.11"
 files = ["src", "tests"]
 exclude = ["\\.venv", "env", "build", "dist"]
 follow_imports = "skip"  # don't analyze third-party libs
+ignore_missing_imports = true
