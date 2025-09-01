@@ -5,18 +5,32 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: read
+  contents: write   # needed to create a GitHub Release
 
 jobs:
-  build-and-publish:
+  build-publish-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: "3.11" }
-      - run: python -m pip install -U pip build
-      - run: python -m build
+        with:
+          python-version: "3.11"
+
+      - name: Build dists
+        run: |
+          python -m pip install -U pip build
+          python -m build         # creates dist/*.whl and dist/*.tar.gz
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+          password: ${{ secrets.PYPI_API_TOKEN }}   # add in repo settings → Secrets
+
+      - name: Create GitHub Release (auto notes)
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
