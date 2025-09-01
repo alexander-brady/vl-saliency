@@ -1,16 +1,19 @@
 import types
+
+import matplotlib
 import pytest
 import torch
 import torch.nn as nn
-import matplotlib
 
-matplotlib.use("Agg") # Use a non-interactive backend for testing
+matplotlib.use("Agg")  # Use a non-interactive backend for testing
 
 # ---- Dummy test doubles (shared across all tests) ----
+
 
 class DummyProcessor:
     class _Tok:
         pad_token_id = 0
+
     tokenizer = _Tok()
 
 
@@ -20,7 +23,7 @@ class DummyConfig:
 
     def __contains__(self, key):
         return hasattr(self, key)
-    
+
 
 class DummyModel(nn.Module):
     def __init__(self, num_layers=2, num_heads=3):

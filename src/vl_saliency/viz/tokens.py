@@ -1,11 +1,12 @@
 import html
-from typing import Literal, Optional, Union, Sequence, overload
+from collections.abc import Sequence
+from typing import Literal, overload
 
 import torch
 from transformers import ProcessorMixin
 
 try:
-    from IPython.display import display, HTML  # optional
+    from IPython.display import HTML, display  # optional
 except Exception:  # pragma: no cover
     display = HTML = None
 
@@ -16,7 +17,7 @@ def render_token_ids(
     processor: ProcessorMixin,
     return_html: Literal[True],
     gen_start: int = ...,
-    skip_tokens: Optional[Union[int, Sequence[int]]] = ...,
+    skip_tokens: int | Sequence[int] | None = ...,
 ) -> str: ...
 @overload
 def render_token_ids(
@@ -24,19 +25,20 @@ def render_token_ids(
     processor: ProcessorMixin,
     return_html: Literal[False],
     gen_start: int = ...,
-    skip_tokens: Optional[Union[int, Sequence[int]]] = ...,
+    skip_tokens: int | Sequence[int] | None = ...,
 ) -> None: ...
+
 
 def render_token_ids(
     generated_ids: torch.Tensor,
     processor: ProcessorMixin,
     return_html: bool = False,
     gen_start: int = 0,
-    skip_tokens: Optional[Union[int, Sequence[int]]] = None,
-) -> Optional[str]:
+    skip_tokens: int | Sequence[int] | None = None,
+) -> str | None:
     """
     Visualizes the generated text from the model.
-    
+
     Args:
         generated_ids (torch.Tensor): The generated token IDs.
         processor: The processor used to process input.
@@ -54,12 +56,12 @@ def render_token_ids(
 
     tok = processor.tokenizer
     tokens = tok.convert_ids_to_tokens(token_ids, skip_special_tokens=False)
-    
-    skip_set = { skip_tokens } if isinstance(skip_tokens, int) else set(skip_tokens or [])
+
+    skip_set = {skip_tokens} if isinstance(skip_tokens, int) else set(skip_tokens or [])
     special_ids = set(getattr(tok, "all_special_ids", []) or [])
-    
+
     space_markers = ("▁", "Ġ")
-    newline_markers = { "\n", "\\n", "Ċ", "▁\n" }
+    newline_markers = {"\n", "\\n", "Ċ", "▁\n"}
 
     # Styles
     FONTS = "font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;"
@@ -76,7 +78,7 @@ def render_token_ids(
     )
 
     buffer = [STYLE, f'<div style="{FONTS}">']
-    for i, (token, tid) in enumerate(zip(tokens, token_ids)):
+    for i, (token, tid) in enumerate(zip(tokens, token_ids, strict=False)):
         if tid in skip_set:
             continue
 
@@ -89,14 +91,13 @@ def render_token_ids(
             fmt = f'<span style="{SPECIAL}">{html.escape(token)}</span>'
         else:
             fmt = html.escape(token)
-            
 
         title = f"Token: {token} (ID: {tid})\nIndex: {i}"
         span = f'<div class="token" style="{COMMON} {style}" title="{html.escape(title)}">{fmt}</div>'
         buffer.append(span)
-        
+
         if token in newline_markers:
-           buffer.append("<br>")
+            buffer.append("<br>")
 
     buffer.append("</div>")
     out = "".join(buffer)

@@ -1,4 +1,5 @@
 import logging
+
 from vl_saliency.logger import get_logger
 
 

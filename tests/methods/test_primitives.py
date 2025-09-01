@@ -5,7 +5,7 @@ from vl_saliency.methods.registry import resolve
 
 
 def test_attn_raw_identity_and_sigmoid_flag():
-    attn = torch.tensor([[[ -10.0, 0.0, 10.0 ]]])
+    attn = torch.tensor([[[-10.0, 0.0, 10.0]]])
     grad = torch.zeros_like(attn)
 
     out_no_sig = attn_raw(attn, grad, sigmoid=False)
@@ -17,7 +17,7 @@ def test_attn_raw_identity_and_sigmoid_flag():
 
 
 def test_grad_raw_identity_and_relu_and_abs_flags():
-    grad = torch.tensor([[[ -2.0, -1.0, 0.0, 1.0, 2.0 ]]])
+    grad = torch.tensor([[[-2.0, -1.0, 0.0, 1.0, 2.0]]])
     attn = torch.zeros_like(grad)
 
     # identity
@@ -56,7 +56,7 @@ def test_registry_resolve_attn_and_grad_raw():
     a = resolve("attn_raw")
     g = resolve("grad_raw")
     assert callable(a) and callable(g)
-    attn = torch.ones(1,1,2)
+    attn = torch.ones(1, 1, 2)
     grad = torch.ones_like(attn)
     assert torch.allclose(a(attn, grad), attn_raw(attn, grad))
     assert torch.allclose(g(attn, grad), grad_raw(attn, grad))

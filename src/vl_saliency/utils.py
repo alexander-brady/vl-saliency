@@ -1,8 +1,9 @@
-from typing import Optional, Tuple, Sequence
+from collections.abc import Sequence
+
 import torch
 
+ALL_LAYERS: object = object()
 
-ALL_LAYERS: object = object() 
 
 def _get_image_token_id(config) -> int:
     """
@@ -11,14 +12,14 @@ def _get_image_token_id(config) -> int:
     return getattr(config, "image_token_id", getattr(config, "image_token_index", -1))
 
 
-def _get_vision_patch_shape(config) -> Optional[Tuple[int, int]]:
+def _get_vision_patch_shape(config) -> tuple[int, int] | None:
     """
     Get the number of height and width tokens from a multimodal config.
     """
     # If explicit count is given, prefer that
-    if "mm_tokens_per_image" in config: 
-        side = int(config.mm_tokens_per_image ** 0.5)
-        return side, side # Assume Square Tokens
+    if "mm_tokens_per_image" in config:
+        side = int(config.mm_tokens_per_image**0.5)
+        return side, side  # Assume Square Tokens
 
     # Otherwise, check vision_config
     if "vision_config" in config:
@@ -32,7 +33,9 @@ def _get_vision_patch_shape(config) -> Optional[Tuple[int, int]]:
     return None
 
 
-def _select_layers(tensors: torch.Tensor, indices: int | object | Sequence[int]) -> torch.Tensor:
+def _select_layers(
+    tensors: torch.Tensor, indices: int | object | Sequence[int]
+) -> torch.Tensor:
     """
     Extract specific layers from a tensor.
         - None: use all layers

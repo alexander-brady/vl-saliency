@@ -1,11 +1,13 @@
-from .registry import register
-
 import torch
 import torch.nn.functional as F
 
+from .registry import register
+
 
 @register("attn_raw", "attn")
-def attn_raw(attn: torch.Tensor, grad: torch.Tensor, *, sigmoid: bool = False) -> torch.Tensor:
+def attn_raw(
+    attn: torch.Tensor, grad: torch.Tensor, *, sigmoid: bool = False
+) -> torch.Tensor:
     """
     Use the attention map.
 
@@ -24,7 +26,9 @@ def attn_raw(attn: torch.Tensor, grad: torch.Tensor, *, sigmoid: bool = False) -
 
 
 @register("grad_raw", "grad")
-def grad_raw(attn: torch.Tensor, grad: torch.Tensor, *, relu: bool = False, abs: bool = False) -> torch.Tensor:
+def grad_raw(
+    attn: torch.Tensor, grad: torch.Tensor, *, relu: bool = False, abs: bool = False
+) -> torch.Tensor:
     """
     Use the gradients of the attention map.
 
@@ -39,7 +43,7 @@ def grad_raw(attn: torch.Tensor, grad: torch.Tensor, *, relu: bool = False, abs:
     """
     if relu:
         grad = F.relu(grad)
-        
+
     if abs:
         grad = grad.abs()
 

@@ -1,7 +1,7 @@
-from .registry import register
-
 import torch
 import torch.nn.functional as F
+
+from .registry import register
 
 
 @register("gradcam")
@@ -13,11 +13,11 @@ def gradcam(attn: torch.Tensor, grad: torch.Tensor) -> torch.Tensor:
     Args:
         attn (torch.Tensor): Attention weights of shape [num_layers, num_heads, seq_len].
         grad (torch.Tensor): Gradients of shape [num_layers, num_heads, seq_len].
-        
+
     Returns:
         torch.Tensor: Saliency map of shape [num_layers, num_heads, seq_len].
     """
-    grad = F.relu(grad)  
+    grad = F.relu(grad)
     return grad * attn
 
 
@@ -30,7 +30,7 @@ def agcam(attn: torch.Tensor, grad: torch.Tensor) -> torch.Tensor:
     Args:
         attn (torch.Tensor): Attention weights of shape [num_layers, num_heads, seq_len].
         grad (torch.Tensor): Gradients of shape [num_layers, num_heads, seq_len].
-        
+
     Returns:
         torch.Tensor: Saliency map of shape [num_layers, num_heads, seq_len].
     """

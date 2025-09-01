@@ -12,19 +12,23 @@ Lets you register a method under a string key and resolve it later:
     method = resolve("gradcam")
 ```
 """
-from typing import Callable, Dict, Any
+
+from collections.abc import Callable
+from typing import Any
+
+_REGISTRY: dict[str, Callable[..., Any]] = {}
+_ALIASES: dict[str, str] = {}
 
 
-_REGISTRY: Dict[str, Callable[..., Any]] = {}
-_ALIASES: Dict[str, str] = {}
-
-
-def register(name: str, *aliases: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def register(
+    name: str, *aliases: str
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         _REGISTRY[name.lower()] = func
         for alias in aliases:
             _ALIASES[alias.lower()] = name
         return func
+
     return decorator
 
 

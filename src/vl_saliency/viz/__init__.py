@@ -10,4 +10,7 @@ fig = overlay(saliency_map, image, title="My Saliency Map", figsize=(8, 8))
 fig.show()
 ```
 """
+
 from .overlay import overlay
+
+__all__ = ["overlay"]

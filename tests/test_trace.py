@@ -1,5 +1,5 @@
-import torch
 import pytest
+import torch
 
 from vl_saliency import SaliencyTrace
 

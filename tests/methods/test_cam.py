@@ -1,6 +1,6 @@
 import torch
 
-from vl_saliency.methods.cam import gradcam, agcam
+from vl_saliency.methods.cam import agcam, gradcam
 from vl_saliency.methods.registry import resolve
 
 
@@ -21,11 +21,9 @@ def test_agcam_shape_relu_on_grad_and_sigmoid_on_attn_extremes():
     L, H, P = 2, 3, 4
     # Make attn contain large magnitudes to test sigmoid squashing (~0 and ~1)
     attn = torch.tensor(
-        [[[ -20.0, 0.0, 20.0, 5.0 ]] * H] * L
+        [[[-20.0, 0.0, 20.0, 5.0]] * H] * L
     )  # broadcasted pattern per layer/head
-    grad = torch.tensor(
-        [[[ -1.0, 0.5,  2.0, -3.0 ]] * H] * L
-    )
+    grad = torch.tensor([[[-1.0, 0.5, 2.0, -3.0]] * H] * L)
 
     out = agcam(attn, grad)
 
@@ -42,7 +40,9 @@ def test_agcam_shape_relu_on_grad_and_sigmoid_on_attn_extremes():
     # - grad < 0 -> zero regardless of attn
     assert torch.allclose(out[..., 0], torch.zeros_like(out[..., 0]))
     # - large negative attn -> ~0 multiplier
-    assert torch.all(out[..., 0] == 0)  # already zero from grad, but also confirms no negatives leak
+    assert torch.all(
+        out[..., 0] == 0
+    )  # already zero from grad, but also confirms no negatives leak
     # - mid gradients with ~0.5 sigmoid at 0.0
     assert torch.allclose(out[..., 1], relu_grad[..., 1] * 0.5, atol=1e-6)
     # - large positive attn -> ~1 multiplier
@@ -71,9 +71,8 @@ def test_registry_resolve_gradcam_and_agcam():
     assert callable(g) and callable(a)
 
     # quick smoke check via registry-call equivalence
-    L, H, P = 1, 1, 3
     attn = torch.tensor([[[1.0, -2.0, 3.0]]])
-    grad = torch.tensor([[[ -1.0, 2.0, -3.0 ]]])
+    grad = torch.tensor([[[-1.0, 2.0, -3.0]]])
 
     out_g_direct = gradcam(attn, grad)
     out_g_registry = g(attn, grad)

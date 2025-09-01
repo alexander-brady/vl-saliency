@@ -1,6 +1,7 @@
-import sys
 import logging
+import sys
 from datetime import datetime
+
 
 class MinimalFormatter(logging.Formatter):
     def format(self, record):
@@ -16,6 +17,6 @@ def get_logger(name: str = "app", level=logging.INFO) -> logging.Logger:
         handler.setFormatter(MinimalFormatter())
         logger.addHandler(handler)
 
-    logger.propagate = False # Avoid double logging
+    logger.propagate = False  # Avoid double logging
     logger.setLevel(level)
     return logger

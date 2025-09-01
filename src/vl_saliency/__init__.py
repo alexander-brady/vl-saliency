@@ -21,4 +21,7 @@ trace.capture(**inputs, generated_ids=generated_ids)
 saliency_map = trace.map(0)
 ```
 """
+
 from vl_saliency.trace import SaliencyTrace
+
+__all__ = ["SaliencyTrace"]

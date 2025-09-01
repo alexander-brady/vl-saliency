@@ -1,8 +1,8 @@
 # tests/test_overlay.py
-import torch
-import pytest
-from PIL import Image
 import matplotlib.pyplot as plt
+import pytest
+import torch
+from PIL import Image
 
 from vl_saliency.viz.overlay import overlay
 
@@ -39,7 +39,9 @@ def test_overlay_with_image_and_colorbar(saliency_map, dummy_image):
 
 def test_overlay_uses_existing_ax(saliency_map, dummy_image):
     fig, ax = plt.subplots()
-    fig2 = overlay(saliency_map, image=dummy_image, ax=ax, show_colorbar=False, title="custom")
+    fig2 = overlay(
+        saliency_map, image=dummy_image, ax=ax, show_colorbar=False, title="custom"
+    )
     # Should not create a new Figure
     assert fig2 is fig
     assert ax.get_title() == "custom"
