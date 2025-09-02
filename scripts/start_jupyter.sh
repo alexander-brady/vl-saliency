@@ -5,6 +5,11 @@
 
 source scripts/setup_env.sh
 
+export PYTHONNOUSERSITE=1
+unset PYTHONPATH
+
+python -m pip install -U --quiet jupyter ipykernel
+
 jupyter notebook --no-browser --ip=0.0.0.0 --port=8888
 
 deactivate

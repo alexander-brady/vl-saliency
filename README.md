@@ -1,40 +1,25 @@
-# Vision-Language Saliency Extraction
+# Vision–Language Saliency Extraction
 
-This repository provides tools for extracting saliency maps from vision-language models, extending classic methods originally developed for Vision Transformers (ViTs) to modern vision-language architectures.
+[![CI](https://github.com/alexander-brady/vl-saliency/actions/workflows/ci.yml/badge.svg)](https://github.com/alexander-brady/vl-saliency/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/vl-saliency.svg)](https://pypi.org/project/vl-saliency/)
+[![Python](https://img.shields.io/badge/python-≥3.10-purple.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/github/license/alexander-brady/vl-saliency.svg)](https://github.com/alexander-brady/vl-saliency/blob/main/LICENSE)
 
-To use in your project, simply download from PyPI:
+This library provides a simple, model-agnostic interface to compute and visualize text-to-image saliency maps, extending classic methods originally developed for Vision Transformers (ViTs) to modern vision-language architectures. Compatible with any Hugging Face Image-Text-to-Text model, this library makes it easy to interpret vision-language model output. Modular and extensible, novel saliency techniques can be easily integrated.
+
+## Installation
+
+This library is available through PyPI and can be installed using pip:
 
 ```bash
 pip install vl-saliency
 ```
 
+## Features
 
-**Project Structure**
+> See the [quickstart notebook](notebooks/quickstart.ipynb) for a complete example of how to use the saliency extractor with a Gemma3 vision-language model.
 
-- `src/vl_saliency/`: Contains the main code for saliency extraction.
-- `tests/`: Contains unit tests for the saliency extraction code.
-- `notebooks/`: Example notebooks demonstrating how to use the saliency extractor with different vision-language models.
-- `scripts/`: Shell scripts for starting Jupyter servers on the [ETH Zurich Euler cluster](https://scicomp.ethz.ch/wiki/Euler).
-
-## Local Installation
-
-1. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-   ```
-2. Install the required packages:
-   ```bash
-    pip install -e .[dev] # Install the package in editable mode
-    ```
-    
-## Usage
-
-> See the [example notebook](notebooks/quickstart.ipynb) for a complete example of how to use the saliency extractor with a Gemma3 vision-language model.
-
-This library is compatible with any Huggingface Image-Text-to-Text model.
-
-Quickstart code snippet:
+Using `SaliencyTrace` objects, you can easily compute and visualize saliency maps for any Hugging Face Image-Text-to-Text model.
 
 ```python
 from vl_saliency import SaliencyTrace
@@ -83,10 +68,44 @@ This can be a string or a callable. If callable, it must accept the attention an
 Additional kwargs can be passed to the saliency computation methods in the `trace.map` call.
 
 The following methods are implemented:
-- `AGCAM`: Attention-guided Class Activation Mapping
-- `GRADCAM`: Gradient-weighted Class Activation Mapping
+- `AGCAM`: Attention-guided Class Activation Mapping.
+- `GRADCAM`: Gradient-weighted Class Activation Mapping.
 - `ATTN`: Raw attention map. Parameters: `sigmoid: bool`.
 - `GRAD`: Raw gradient map. Parameters: `relu: bool`, `abs: bool`.
+
+## Contributing
+
+Contributions are welcome! Open an issue to discuss ideas or submit a PR directly.
+
+**Getting Started**
+
+1. Clone the repository and install the required dependencies.
+
+    ```bash
+    git clone https://github.com/alexander-brady/vl-saliency
+    cd vl-saliency
+    ```
+
+2. Create a virtual environment and activate it.
+
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate  # On Windows use `.venv\Scripts\activate`
+    ```
+
+3. Install the development dependencies.
+    ```bash
+    pip install -e .[dev]
+    ```
+
+**Guidelines**
+
+Before submitting a pull request, ensure:
+```
+ruff check . --fix && ruff format .   # Lint & format
+pytest                                # Run tests
+mypy .                                # Type check
+```
 
 ## License
 
