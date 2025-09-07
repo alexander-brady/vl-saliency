@@ -1,0 +1,57 @@
+image_url,image_sha256,count,points,label
+https://live.staticflickr.com/6175/6188863144_31dd0ecba1_k.jpg,a7bbb6b23a052bdaf465f53f0a14470b5233ffaa2ab379422baa923c7b8e1fc6,4,"{'x': array([ 475.136,  645.12 , 1271.808, 1533.952], dtype=float32), 'y': array([866.79596, 293.788  , 672.556  , 318.068  ], dtype=float32)}",airplanes
+https://live.staticflickr.com/7807/46380625722_29a5910b14_k.jpg,c33d7fac5f4efe1e9368356fdc5f4ece4d7c949dc8f950c5758808f2bf507201,9,"{'x': array([ 225.28 ,  387.072,  561.152,  727.04 ,  888.832, 1077.248,
+       1228.8  , 1415.168, 1595.392], dtype=float32), 'y': array([509.184  , 415.872  , 334.08   , 266.112  , 188.92801, 288.     ,
+       391.68   , 506.88   , 614.016  ], dtype=float32)}",airplanes
+https://live.staticflickr.com/2945/15212050500_3ab62dd06f_k.jpg,eef48b57ac70203868132bf4d835d58b8c7455c80b4730d00e8be3630298b6f2,3,"{'x': array([ 441.51498, 1046.41   , 1571.56   ], dtype=float32), 'y': array([534., 459., 401.], dtype=float32)}",airplanes
+https://live.staticflickr.com/4086/5013047395_97c707bc2f_k.jpg,3996b947f5f5b695761a8ce198544d31881ebad2d03369f9fc9a873d4b87dad1,7,"{'x': array([ 118.784,  362.496,  688.128,  952.32 , 1290.24 , 1587.2  ,
+       1923.072], dtype=float32), 'y': array([151.524  , 159.597  , 189.405  , 209.27701, 229.77   , 237.222  ,
+       331.61398], dtype=float32)}",apples
+https://live.staticflickr.com/2430/3737759018_deb809d510_b.jpg,8bc0431b2d1df89eeee47c8122fe99d2e40d732ee8d1df208069d13a26b13549,3,"{'x': array([350.208, 418.816, 791.552], dtype=float32), 'y': array([427.668  , 146.41501, 286.701  ], dtype=float32)}",apples
+https://live.staticflickr.com/1620/24719807629_421717feda_k.jpg,de99c0562f444e0e690ac3f5717f26b28f41a115020437bc9344ee0df36f605c,6,"{'x': array([ 327.52  ,  562.925 ,  784.001 , 1058.2991, 1342.832 , 1649.882 ],
+      dtype=float32), 'y': array([1024.9559 ,  904.82404,  783.41394,  639.     ,  497.142  ,
+        357.84   ], dtype=float32)}",ballons
+https://live.staticflickr.com/7691/28714203606_5b7889902e_h.jpg,3e57a439f8730f4e1ada303ff242ae6d7652905234742fdc09353ce7bfd77a3a,6,"{'x': array([ 569.60004,  644.8    ,  699.2    , 1451.2    , 1468.7999 ,
+       1510.4    ], dtype=float32), 'y': array([574.896  , 676.84796, 502.68   , 521.088  , 610.296  , 464.448  ],
+      dtype=float32)}",ballons
+https://live.staticflickr.com/1373/879091752_46a8d519cf_z.jpg,39e94616a7631d687d83ce43bc858f4a8c87496c54a224f1822ef3cf06cf0be7,2,"{'x': array([ 56.64   , 286.08002], dtype=float32), 'y': array([234.88, 299.52], dtype=float32)}",ballons
+https://live.staticflickr.com/4207/34546684863_7773242fcc_3k.jpg,a5ec35935404e50b2e5702b03e6164e28ca5ddb8ee7238b0c784502f7f85e459,4,"{'x': array([ 552.78 , 1311.317, 2180.41 , 2278.682], dtype=float32), 'y': array([1089.08   , 1215.184  ,  750.89197,  978.739  ], dtype=float32)}",bears
+https://live.staticflickr.com/65535/51929319313_1b32949507_3k.jpg,93397c2773626614e0a7ab7ad3ef0d17b85fbec0ce7081e012051a22aafe7827,2,"{'x': array([1044.48 , 2024.448], dtype=float32), 'y': array([627.49, 754.56], dtype=float32)}",bears
+https://live.staticflickr.com/2794/32943628491_c02cf02770_h.jpg,db761a435fc3b6ad99c4075cdb9c0e3f2694121c3d92ad8d0b7e738df8874d97,5,"{'x': array([ 412.8    ,  708.8    ,  817.6    ,  950.39996, 1441.6001 ],
+      dtype=float32), 'y': array([714.24   , 381.672  , 876.06006, 669.60004, 671.832  ],
+      dtype=float32)}",bears
+https://live.staticflickr.com/2933/14547933183_c2a4034790_h.jpg,09816eefe97d5550bdd8e600441fe30453384fc1afc06e3810359bb2ff5eefdd,4,"{'x': array([ 262.4,  355.2, 1075.2, 1200. ], dtype=float32), 'y': array([693.776  , 529.24   , 651.85596, 503.03998], dtype=float32)}",ships
+https://live.staticflickr.com/3844/14524416181_581236e94a_h.jpg,ac9fd5e7399f4c824e362c41af3501dd3f319c25913387755240544a0b4ee507,4,"{'x': array([ 225.459,  455.715,  591.63 , 1140.087], dtype=float32), 'y': array([263.5    , 328.848  , 438.46402, 664.02   ], dtype=float32)}",ships
+https://live.staticflickr.com/7184/6881792861_2ca59a0649_k.jpg,73978f1d62e557717a06997931626a9320ec5fc17f2233995ef559171c07e713,3,"{'x': array([ 412., 1036., 1684.], dtype=float32), 'y': array([362.136  , 428.496  , 389.62802], dtype=float32)}",ships
+https://live.staticflickr.com/1203/1096609397_0205f3f469.jpg,5366dab67e64c056e08ac1c14fab293ccceb27da25ef9054263c6f3d10f7d5d3,7,"{'x': array([ 69. , 109.5, 183. , 228.5, 298.5, 354. , 426.5], dtype=float32), 'y': array([262.125  ,  99.     , 252.37498,  91.875  , 253.5    ,  94.875  ,
+       273.75   ], dtype=float32)}",books
+https://live.staticflickr.com/4029/5139563986_a931c8b7bd_h.jpg,86321dd732969e15de6c13896e816b65191bd658ffbbdba6c5e350ec1739a176,4,"{'x': array([342.4    , 476.80002, 606.4    , 697.6    ], dtype=float32), 'y': array([750.31   , 707.46497, 706.42   , 701.195  ], dtype=float32)}",books
+https://live.staticflickr.com/50/144035197_edfc5d8f5a_b.jpg,967e10f7caaa533ff344a8c0d361cf7a5e0811b3e1f04aab1821aae49d73888d,4,"{'x': array([114.688, 244.736, 422.912, 720.896], dtype=float32), 'y': array([398.59198, 390.144  , 390.144  , 384.768  ], dtype=float32)}",books
+https://live.staticflickr.com/1626/25849761820_3a02267b0c_o.jpg,b51dd9745f9f503b79b339009e32607df20b99eda4d6c8e5083b4d3f890a4c41,4,"{'x': array([232.4, 292.6, 414.4, 574. ], dtype=float32), 'y': array([231.00002, 500.49997, 308.     , 412.3    ], dtype=float32)}",bottles
+https://live.staticflickr.com/5529/9358393881_5676b8cdf8_h.jpg,d51d67e293f4588c45e8ae00b7455c56feef073d674430e478a6f501b66c0376,8,"{'x': array([ 203.20001,  289.59998,  423.99997,  484.80002,  660.8    ,
+        724.8    ,  926.4    , 1108.8    ], dtype=float32), 'y': array([638.066  , 543.103  , 657.272  , 544.17   , 669.009  , 556.974  ,
+       564.443  , 565.50995], dtype=float32)}",bottles
+https://live.staticflickr.com/1443/25973437123_92b217e68d_h.jpg,4b4ddbd2a60aa32be39347fbf614f22bc9df8e92de6dc57a204869c793f22e49,3,"{'x': array([702.4, 784. , 881.6], dtype=float32), 'y': array([550.8, 638.4, 518.4], dtype=float32)}",bottles
+https://live.staticflickr.com/28/45873266_0f878edbfe_z.jpg,74931ee357fe88ab0a0c29aa1a7a0fd1dc4ad73d1f9081d92af8eb4d997f4180,5,"{'x': array([131.544  , 143.724  , 306.936  , 468.32098, 537.138  ],
+      dtype=float32), 'y': array([295.596, 132.651, 292.842, 210.681, 291.465], dtype=float32)}",cats
+https://live.staticflickr.com/8043/8122897753_56395eecdb_h.jpg,3a3c14bff06d3686d4a3f3a4578502b0da154e0999e276f8f3ff3aee1c27a618,2,"{'x': array([372.048, 884.304], dtype=float32), 'y': array([959.4  , 968.994], dtype=float32)}",cats
+https://live.staticflickr.com/650/31838409430_bd94c92771_h.jpg,afd7f664f07bcd65594c47e87b131eeaad3d2254e93aa88d0a4c8f6fa6cc374f,6,"{'x': array([ 182.4    ,  265.59998,  428.80002,  987.19995, 1065.6    ,
+       1360.     ], dtype=float32), 'y': array([630.     , 186.     , 900.     , 726.     , 326.40002, 872.4    ],
+      dtype=float32)}",cats
+https://live.staticflickr.com/4118/4859084713_ddfef3605f_h.jpg,1bdff8093ad3e4ad08c358c7e66d2c30505988337df6cf4a4f71932ad1260440,6,"{'x': array([ 572.8    ,  659.2    ,  839.99994,  894.4    , 1131.2001 ,
+       1160.     ], dtype=float32), 'y': array([649.2    , 307.2    , 801.6    , 452.4    , 728.39996, 420.     ],
+      dtype=float32)}",eggs
+https://live.staticflickr.com/1638/26071688435_d6e55e24f2_h.jpg,3ea06b101c4bb2822a4782a518e698afc483e34df3a92eba87c90a657ad563a3,12,"{'x': array([125.28   , 147.95999, 315.36   , 334.8    , 378.     , 529.2    ,
+       561.6    , 591.83997, 654.48   , 795.95996, 819.72003, 844.56   ],
+      dtype=float32), 'y': array([ 117.363  ,  379.06897,  729.809  ,  151.088  ,  472.15   ,
+       1095.388  ,  105.222  ,  555.788  ,  269.80002,  687.99   ,
+        414.143  ,  101.175  ], dtype=float32)}",eggs
+https://live.staticflickr.com/5569/14139375547_9b5be58257_h.jpg,ab17d6dabe6d797752792d6d9001a9177370617a2fc41f7aae3bbadda02f1fa0,4,"{'x': array([707.2    , 712.     , 812.80005, 864.00006], dtype=float32), 'y': array([558. , 709.2, 631.2, 516. ], dtype=float32)}",eggs
+https://live.staticflickr.com/7037/7110536777_94b54790f8_h.jpg,a768800ec2a61dfd9c412e7cb58fb15e5edecbfccd3688ebef50f13e3a14f69a,5,"{'x': array([ 230.4    ,  446.40002,  873.6    , 1203.2    , 1411.2001 ],
+      dtype=float32), 'y': array([619.92694, 622.061  , 566.577  , 669.009  , 648.73596],
+      dtype=float32)}",people
+https://live.staticflickr.com/7176/6924742338_ad664b9ed5_h.jpg,1b66ab3135d16933a1e6b5ab06b9b576902e26b8a1117564b378557e0468e6dc,3,"{'x': array([465.6   , 753.6   , 988.7999], dtype=float32), 'y': array([650.4, 744. , 796.8], dtype=float32)}",people
+https://live.staticflickr.com/4855/32204820828_f5b370bc11_h.jpg,817175a097dd8ad9247fc3a14c41693671f07a400bfac0d163d1fdf8c828bffc,8,"{'x': array([ 377.6,  492.8,  580.8,  777.6,  780.8,  984. , 1177.6, 1392. ],
+      dtype=float32), 'y': array([499.954  , 248.37799, 463.71   , 555.38605, 362.44   , 411.476  ,
+       471.172  , 655.59   ], dtype=float32)}",people
+https://live.staticflickr.com/7427/9621664296_c8eee469a4_b.jpg,c0f9f85f6f62ac5d00d3fb8c1dc11c0f4d440af9bbfca7302d922fcc78597717,4,"{'x': array([211.968, 378.88 , 644.096, 755.712], dtype=float32), 'y': array([398.96997, 276.21   , 263.252  , 424.88602], dtype=float32)}",people
