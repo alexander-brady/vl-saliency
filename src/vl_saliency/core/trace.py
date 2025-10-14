@@ -12,6 +12,7 @@ from .utils import (
     _get_vision_patch_shape,
     _select_layers,
 )
+from .head_analysis.analyze import analyze_heads, combine_heads
 
 logger = get_logger(__name__)
 
@@ -165,6 +166,7 @@ class SaliencyTrace:
         attn_matrices = list(
             outputs.attentions
         )  # layers * [batch, heads, tokens, tokens]
+
         for attn in attn_matrices:
             attn.retain_grad()
 
@@ -200,6 +202,7 @@ class SaliencyTrace:
         layers: int | object | Sequence[int] | None = None,
         head_reduce: str | None = None,
         layer_reduce: str | None = None,
+        use_localization_heads: bool = False,
         **method_kwargs,
     ):
         """
@@ -212,6 +215,7 @@ class SaliencyTrace:
             layers: If set, overrides the attention layers used for computing the saliency map.
             head_reduce: If set, overrides the aggregation method for the attention heads.
             layer_reduce: If set, overrides the aggregation method for the layers.
+            use_localization_heads: Whether to use only localization heads as identified by `analyze_heads`.
             **method_kwargs: Additional keyword arguments for the saliency map method.
         Returns:
             torch.Tensor: The computed saliency map. [1, 1, H, W]
@@ -243,9 +247,20 @@ class SaliencyTrace:
             method = self.method
         mask = method(img_attn, img_grad, **method_kwargs)
 
-        # Aggregate over heads and layers -> [1, 1, h, w]
-        mask = Reduce("l h p -> l p", reduction=head_reduce or self.head_reduce)(mask)
-        mask = Reduce("l p -> p", reduction=layer_reduce or self.layer_reduce)(mask)
-        mask = Rearrange("(h w) -> 1 1 h w", h=H, w=W)(mask)
+        if use_localization_heads:
+            # If localization heads are used:
+            # 1. Analyze heads to find localization heads
+            # 2. Combine only those heads and use gaussian smoothing and binarization
+            # 3. Upscale mask to image size
+            # @Alex: Feel free to look over this, I am unsure whether they are identical or not
+            # to what you did in your earlier implementation.
+            localization_heads = analyze_heads(attn=img_attn, patch_size=H*W) # TODO: Unsure about patch_size argument, see comment in analyze_heads
+            
+            mask = combine_heads(mask, localization_heads, P=H*W) # TODO: Unsure about patch_size argument, see comment in analyze_heads
+        else:
+            # Aggregate over heads and layers -> [1, 1, h, w]
+            mask = Reduce("l h p -> l p", reduction=head_reduce or self.head_reduce)(mask)
+            mask = Reduce("l p -> p", reduction=layer_reduce or self.layer_reduce)(mask)
+            mask = Rearrange("(h w) -> 1 1 h w", h=H, w=W)(mask)
 
         return mask
