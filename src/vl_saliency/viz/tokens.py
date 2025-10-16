@@ -70,12 +70,7 @@ def render_token_ids(
     SPECIAL = "opacity: 0.6;"
     PROMPT = "background-color: #f5f5f5;"
     GENERATED = "background-color: #eafeee;"
-    STYLE = (
-        "<style>"
-        ".token { transition: filter 0.2s ease; }"
-        ".token:hover { filter: brightness(85%); }"
-        "</style>"
-    )
+    STYLE = "<style>.token { transition: filter 0.2s ease; }.token:hover { filter: brightness(85%); }</style>"
 
     buffer = [STYLE, f'<div style="{FONTS}">']
     for i, (token, tid) in enumerate(zip(tokens, token_ids, strict=False)):

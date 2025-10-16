@@ -12,11 +12,7 @@ class DummyTokenizer:
         self.all_special_ids = list(all_special_ids)
 
     def convert_ids_to_tokens(self, ids, skip_special_tokens=False):
-        return [
-            self.id2tok[i]
-            for i in ids
-            if i not in self.all_special_ids or not skip_special_tokens
-        ]
+        return [self.id2tok[i] for i in ids if i not in self.all_special_ids or not skip_special_tokens]
 
 
 class DummyProcessor:

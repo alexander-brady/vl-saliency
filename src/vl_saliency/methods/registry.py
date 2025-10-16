@@ -20,9 +20,7 @@ _REGISTRY: dict[str, Callable[..., Any]] = {}
 _ALIASES: dict[str, str] = {}
 
 
-def register(
-    name: str, *aliases: str
-) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+def register(name: str, *aliases: str) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         _REGISTRY[name.lower()] = func
         for alias in aliases:

@@ -33,9 +33,7 @@ def overlay(
     """
     # Resize and normalize saliency map to [0, 1]
     if image is not None:
-        saliency_map = F.interpolate(
-            saliency_map, size=image.size[::-1], mode="bilinear", align_corners=False
-        )
+        saliency_map = F.interpolate(saliency_map, size=image.size[::-1], mode="bilinear", align_corners=False)
     saliency_map = saliency_map.detach().squeeze().cpu().numpy()
     saliency_map = (saliency_map - saliency_map.min()) / (np.ptp(saliency_map) + 1e-8)
 

@@ -42,9 +42,7 @@ def _mk_io(*, H: int, W: int, prompt_len: int, T_gen: int, image_token_id: int) 
 @pytest.fixture
 def io_factory(image_token_id: int):
     def _factory(H=2, W=3, prompt_len=7, T_gen=10):
-        return _mk_io(
-            H=H, W=W, prompt_len=prompt_len, T_gen=T_gen, image_token_id=image_token_id
-        )
+        return _mk_io(H=H, W=W, prompt_len=prompt_len, T_gen=T_gen, image_token_id=image_token_id)
 
     return _factory
 

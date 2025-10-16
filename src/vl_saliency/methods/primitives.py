@@ -5,9 +5,7 @@ from .registry import register
 
 
 @register("attn_raw", "attn")
-def attn_raw(
-    attn: torch.Tensor, grad: torch.Tensor, *, sigmoid: bool = False
-) -> torch.Tensor:
+def attn_raw(attn: torch.Tensor, grad: torch.Tensor, *, sigmoid: bool = False) -> torch.Tensor:
     """
     Use the attention map.
 
@@ -26,9 +24,7 @@ def attn_raw(
 
 
 @register("grad_raw", "grad")
-def grad_raw(
-    attn: torch.Tensor, grad: torch.Tensor, *, relu: bool = False, abs: bool = False
-) -> torch.Tensor:
+def grad_raw(attn: torch.Tensor, grad: torch.Tensor, *, relu: bool = False, abs: bool = False) -> torch.Tensor:
     """
     Use the gradients of the attention map.
 

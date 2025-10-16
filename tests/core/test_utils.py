@@ -84,11 +84,7 @@ def test_select_layers_with_explicit_indices_sequence():
     t = torch.arange(30).view(6, 5)
     out = _select_layers(t, [0, 2, 5])
     assert out.shape[0] == 3
-    assert (
-        torch.equal(out[0], t[0])
-        and torch.equal(out[1], t[2])
-        and torch.equal(out[2], t[5])
-    )
+    assert torch.equal(out[0], t[0]) and torch.equal(out[1], t[2]) and torch.equal(out[2], t[5])
 
 
 def test_select_layers_raises_on_invalid_indices():

@@ -5,6 +5,7 @@ from einops.layers.torch import Rearrange, Reduce
 from transformers import PreTrainedModel, ProcessorMixin
 
 from ..methods import resolve
+from .localization_heads import retrieve_localization_heads, combine_heads
 from .logger import get_logger
 from .utils import (
     ALL_LAYERS,
@@ -12,7 +13,6 @@ from .utils import (
     _get_vision_patch_shape,
     _select_layers,
 )
-from .head_analysis.analyze import analyze_heads, combine_heads
 
 logger = get_logger(__name__)
 
@@ -32,6 +32,7 @@ class SaliencyTrace:
             - Sequence[int]: use specific layer indices
         head_reduce (str): The reduction method to use for the head layer.
         layer_reduce (str): The reduction method to use for the intermediate layers.
+        use_localization_heads (bool): Whether to use only localization heads for saliency map. May lead to better results.
     """
 
     def __init__(
@@ -43,6 +44,7 @@ class SaliencyTrace:
         layers: int | object | Sequence[int] = ALL_LAYERS,
         head_reduce: str = "sum",
         layer_reduce: str = "sum",
+        use_localization_heads: bool = False,
     ):
         self.model = model
         self.processor = processor
@@ -58,10 +60,7 @@ class SaliencyTrace:
         # For models with static vision token counts per image, retrieve it
         self.patch_shape = _get_vision_patch_shape(model.config)
         if self.patch_shape is None:
-            logger.info(
-                "Image patch shape not found in model config."
-                "Falling back to infer it from the input images."
-            )
+            logger.info("Image patch shape not found in model config.Falling back to infer it from the input images.")
 
         # Store saliency computation method
         self.method = resolve(method) if isinstance(method, str) else method
@@ -70,6 +69,7 @@ class SaliencyTrace:
         self.layers = layers
         self.head_reduce = head_reduce
         self.layer_reduce = layer_reduce
+        self.use_localization_heads = use_localization_heads
 
         # Runtime caches (populated by capture)
         self._attn: torch.Tensor | None = None
@@ -100,23 +100,14 @@ class SaliencyTrace:
             ValueError: If the image tokens shape does not match the expected shape.
         """
         # Ensure batch size is 1
-        if (
-            generated_ids.ndim != 2
-            or input_ids.ndim != 2
-            or generated_ids.size(0) != 1
-            or input_ids.size(0) != 1
-        ):
+        if generated_ids.ndim != 2 or input_ids.ndim != 2 or generated_ids.size(0) != 1 or input_ids.size(0) != 1:
             raise ValueError("Batch size must be 1 and tensors must be 2D [B,T].")
 
         # Get image token indices
         image_grid_thw = kwargs.get("image_grid_thw", None)  # Common in Qwen Models
         if image_grid_thw is not None:
-            image_grid_thw = torch.as_tensor(image_grid_thw).to(
-                self.model.device, dtype=torch.int32
-            )
-            self._image_patch_shapes = (
-                image_grid_thw[:, 1:] // 2
-            ).tolist()  # each row -> [H, W]
+            image_grid_thw = torch.as_tensor(image_grid_thw).to(self.model.device, dtype=torch.int32)
+            self._image_patch_shapes = (image_grid_thw[:, 1:] // 2).tolist()  # each row -> [H, W]
         elif self.patch_shape is None:
             raise ValueError(
                 "Image token patch shape not set. Please set `self.patch_shape = (H, W)`"
@@ -131,9 +122,7 @@ class SaliencyTrace:
         expected_img_tkns = sum(patch_sizes)
         image_token_indices = torch.where(input_ids == self.image_token_id)[1]
         if image_token_indices.numel() != expected_img_tkns:
-            raise ValueError(
-                f"Expected {expected_img_tkns} image tokens, but got {image_token_indices.numel()}"
-            )
+            raise ValueError(f"Expected {expected_img_tkns} image tokens, but got {image_token_indices.numel()}")
 
         splits = torch.split(image_token_indices, patch_sizes)  # Tuple of tensors
         self._image_patches = [t.detach().to(torch.long).cpu() for t in splits]
@@ -163,9 +152,7 @@ class SaliencyTrace:
             return_dict=True,
         )
 
-        attn_matrices = list(
-            outputs.attentions
-        )  # layers * [batch, heads, tokens, tokens]
+        attn_matrices = list(outputs.attentions)  # layers * [batch, heads, tokens, tokens]
 
         for attn in attn_matrices:
             attn.retain_grad()
@@ -196,15 +183,13 @@ class SaliencyTrace:
         token: int,
         *,
         image: int = 0,
-        method: str
-        | Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
-        | None = None,
+        method: str | Callable[[torch.Tensor, torch.Tensor], torch.Tensor] | None = None,
         layers: int | object | Sequence[int] | None = None,
         head_reduce: str | None = None,
         layer_reduce: str | None = None,
-        use_localization_heads: bool = False,
+        use_localization_heads: bool | None = None,
         **method_kwargs,
-    ):
+    ) -> torch.Tensor:
         """
         Compute the saliency map for a specific token and image patch.
 
@@ -215,7 +200,7 @@ class SaliencyTrace:
             layers: If set, overrides the attention layers used for computing the saliency map.
             head_reduce: If set, overrides the aggregation method for the attention heads.
             layer_reduce: If set, overrides the aggregation method for the layers.
-            use_localization_heads: Whether to use only localization heads as identified by `analyze_heads`.
+            use_localization_heads: If set, overrides to only use localization heads for saliency map.
             **method_kwargs: Additional keyword arguments for the saliency map method.
         Returns:
             torch.Tensor: The computed saliency map. [1, 1, H, W]
@@ -225,15 +210,19 @@ class SaliencyTrace:
             ValueError: If the specified method is unknown.
         """
         if self._attn is None or self._grad is None:
-            raise ValueError(
-                "No generation has been captured. Please run `capture` first."
-            )
+            raise ValueError("No generation has been captured. Please run `capture` first.")
 
         H, W = self._image_patch_shapes[image]
         patch_indices = self._image_patches[image]
-
+        
+        # If using localization heads, we compute heads from all layers
+        use_localization_heads = self.use_localization_heads if use_localization_heads is None else use_localization_heads
+        if use_localization_heads and (layers is not None or layer_reduce is not None):
+            logger.warning("`layers` and `layer_reduce` arguments are ignored when `use_localization_heads` is True, treated as ALL_LAYERS.")
+            layers = ALL_LAYERS
+            
         # Use only selected layers for saliency computation
-        attn = _select_layers(self._attn, layers or self.layers)
+        attn = _select_layers(self._attn, layers or self.layers) 
         grad = _select_layers(self._grad, layers or self.layers)
 
         # Retrieve attention/gradient from token to image
@@ -247,20 +236,27 @@ class SaliencyTrace:
             method = self.method
         mask = method(img_attn, img_grad, **method_kwargs)
 
-        if use_localization_heads:
+        if use_localization_heads or (use_localization_heads is None and self.use_localization_heads):
             # If localization heads are used:
             # 1. Analyze heads to find localization heads
             # 2. Combine only those heads and use gaussian smoothing and binarization
             # 3. Upscale mask to image size
             # @Alex: Feel free to look over this, I am unsure whether they are identical or not
             # to what you did in your earlier implementation.
-            localization_heads = analyze_heads(attn=img_attn, patch_size=H*W) # TODO: Unsure about patch_size argument, see comment in analyze_heads
-            
-            mask = combine_heads(mask, localization_heads, P=H*W) # TODO: Unsure about patch_size argument, see comment in analyze_heads
+            localization_heads = retrieve_localization_heads(attn=img_attn, patch_size=(H, W), max_keep=1)
+            logger.info(f"Using localization heads: {localization_heads}")
+            l, h = zip(*localization_heads)
+            mask = mask[l, h]  # [num_localization_heads, patch_size]
+
+            # mask = combine_heads(
+            #     mask, localization_heads, P=H * W
+            # )  # TODO: Unsure about patch_size argument, see comment in analyze_heads
         else:
-            # Aggregate over heads and layers -> [1, 1, h, w]
+            # Aggregate over layers -> [l, p]
             mask = Reduce("l h p -> l p", reduction=head_reduce or self.head_reduce)(mask)
-            mask = Reduce("l p -> p", reduction=layer_reduce or self.layer_reduce)(mask)
-            mask = Rearrange("(h w) -> 1 1 h w", h=H, w=W)(mask)
+            
+        # Aggregate over heads -> [1, 1, h, w]
+        mask = Reduce("l p -> p", reduction=layer_reduce or self.layer_reduce)(mask)
+        mask = Rearrange("(h w) -> 1 1 h w", h=H, w=W)(mask)
 
         return mask

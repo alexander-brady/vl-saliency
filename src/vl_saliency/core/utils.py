@@ -33,9 +33,7 @@ def _get_vision_patch_shape(config) -> tuple[int, int] | None:
     return None
 
 
-def _select_layers(
-    tensors: torch.Tensor, indices: int | object | Sequence[int]
-) -> torch.Tensor:
+def _select_layers(tensors: torch.Tensor, indices: int | object | Sequence[int]) -> torch.Tensor:
     """
     Extract specific layers from a tensor.
 

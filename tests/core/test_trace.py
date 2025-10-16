@@ -27,9 +27,7 @@ def test_capture_raises_on_batch_size_not_one(dummy_model, dummy_processor):
         (False, (2, 2), False),  # wrong patch_shape -> error (when true size is 4x4)
     ],
 )
-def test_capture_patch_shape(
-    dummy_model, dummy_processor, have_grid, patch_shape, expect_ok
-):
+def test_capture_patch_shape(dummy_model, dummy_processor, have_grid, patch_shape, expect_ok):
     trace = SaliencyTrace(dummy_model, dummy_processor, method="dummy")
     trace.image_token_id = 1
 
@@ -71,17 +69,13 @@ def test_capture_then_map_produces_mask(tiny_model, io_factory, make_trace, H, W
 
 
 @pytest.mark.parametrize("H,W", [(2, 3)])
-def test_calls_render_token_ids(
-    monkeypatch, tiny_model, io_factory, make_trace, H, W, dummy_processor
-):
+def test_calls_render_token_ids(monkeypatch, tiny_model, io_factory, make_trace, H, W, dummy_processor):
     called = {}
 
     def fake_render_token_ids(**kwargs):
         called.update(kwargs)
 
-    monkeypatch.setattr(
-        "vl_saliency.viz.tokens.render_token_ids", fake_render_token_ids
-    )
+    monkeypatch.setattr("vl_saliency.viz.tokens.render_token_ids", fake_render_token_ids)
 
     trace = make_trace(tiny_model, method=lambda a, g: a * g)
     io = io_factory(H=H, W=W)
