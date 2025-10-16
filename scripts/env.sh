@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-dir="$SCRATCH/cat-bench"
+dir="$SCRATCH/vl_saliency"
 export HF_HOME="$dir/.hf/"
 export UV_CACHE_DIR="$dir/.uv/"
 export UV_PROJECT_ENVIRONMENT="$dir/.venv"
