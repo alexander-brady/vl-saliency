@@ -6,8 +6,12 @@ venv/
 *.py[cod]
 __pycache__/
 *.egg-info/
+_version.py
 build/
 dist/
+
+# Lock files
+uv.lock
 
 # Environment Variables
 .env
