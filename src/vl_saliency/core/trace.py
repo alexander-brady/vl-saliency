@@ -5,7 +5,7 @@ from einops.layers.torch import Rearrange, Reduce
 from transformers import PreTrainedModel, ProcessorMixin
 
 from ..methods import resolve
-from .localization_heads import retrieve_localization_heads, combine_heads
+from .localization_heads import retrieve_localization_heads
 from .logger import get_logger
 from .utils import (
     ALL_LAYERS,
@@ -128,7 +128,7 @@ class SaliencyTrace:
         self._image_patches = [t.detach().to(torch.long).cpu() for t in splits]
 
         device = next(self.model.parameters()).device
-        pad_id = self.processor.tokenizer.pad_token_id
+        pad_id = self.processor.tokenizer.pad_token_id 
 
         generated_ids = generated_ids.clone().detach().to(device)
         pixel_values = pixel_values.to(device)
@@ -180,7 +180,7 @@ class SaliencyTrace:
 
     def map(
         self,
-        token: int,
+        token: int = -1,
         *,
         image: int = 0,
         method: str | Callable[[torch.Tensor, torch.Tensor], torch.Tensor] | None = None,
@@ -194,7 +194,7 @@ class SaliencyTrace:
         Compute the saliency map for a specific token and image patch.
 
         Args:
-            token (int): The absolute index of the token to compute the saliency map for.
+            token (int, default=-1): The absolute index of the token to compute the saliency map for.
             image (int): The index of the image patch to compute the saliency map for. Defaults to 0.
             method: If set, overrides the method for computing the saliency map.
             layers: If set, overrides the attention layers used for computing the saliency map.
@@ -214,15 +214,19 @@ class SaliencyTrace:
 
         H, W = self._image_patch_shapes[image]
         patch_indices = self._image_patches[image]
-        
+
         # If using localization heads, we compute heads from all layers
-        use_localization_heads = self.use_localization_heads if use_localization_heads is None else use_localization_heads
+        use_localization_heads = (
+            self.use_localization_heads if use_localization_heads is None else use_localization_heads
+        )
         if use_localization_heads and (layers is not None or layer_reduce is not None):
-            logger.warning("`layers` and `layer_reduce` arguments are ignored when `use_localization_heads` is True, treated as ALL_LAYERS.")
+            logger.warning(
+                "`layers` and `layer_reduce` arguments are ignored when `use_localization_heads` is True, treated as ALL_LAYERS."
+            )
             layers = ALL_LAYERS
-            
+
         # Use only selected layers for saliency computation
-        attn = _select_layers(self._attn, layers or self.layers) 
+        attn = _select_layers(self._attn, layers or self.layers)
         grad = _select_layers(self._grad, layers or self.layers)
 
         # Retrieve attention/gradient from token to image
@@ -237,24 +241,16 @@ class SaliencyTrace:
         mask = method(img_attn, img_grad, **method_kwargs)
 
         if use_localization_heads or (use_localization_heads is None and self.use_localization_heads):
-            # If localization heads are used:
-            # 1. Analyze heads to find localization heads
-            # 2. Combine only those heads and use gaussian smoothing and binarization
-            # 3. Upscale mask to image size
-            # @Alex: Feel free to look over this, I am unsure whether they are identical or not
-            # to what you did in your earlier implementation.
-            localization_heads = retrieve_localization_heads(attn=img_attn, patch_size=(H, W), max_keep=1)
-            logger.info(f"Using localization heads: {localization_heads}")
-            l, h = zip(*localization_heads)
-            mask = mask[l, h]  # [num_localization_heads, patch_size]
+            # Heuristically determine localization heads
+            localization_heads = retrieve_localization_heads(attn=img_attn, patch_size=(H, W), max_keep=5)
 
-            # mask = combine_heads(
-            #     mask, localization_heads, P=H * W
-            # )  # TODO: Unsure about patch_size argument, see comment in analyze_heads
+            # Select only localization heads -> [num_localization_heads, patch_size]
+            layer_indices, head_indices = zip(*localization_heads, strict=True)
+            mask = mask[layer_indices, head_indices]
         else:
             # Aggregate over layers -> [l, p]
             mask = Reduce("l h p -> l p", reduction=head_reduce or self.head_reduce)(mask)
-            
+
         # Aggregate over heads -> [1, 1, h, w]
         mask = Reduce("l p -> p", reduction=layer_reduce or self.layer_reduce)(mask)
         mask = Rearrange("(h w) -> 1 1 h w", h=H, w=W)(mask)

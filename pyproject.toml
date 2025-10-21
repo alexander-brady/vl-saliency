@@ -6,7 +6,10 @@ build-backend = "setuptools.build_meta"
 name = "vl-saliency"
 dynamic = ["version"]
 description = "Text-to-Image Attention Visualization for Vision-Language Models."
-authors = [{ name = "Alexander Brady" }]
+authors = [
+    { name = "Alexander Brady" },
+    { name = "Tim Eilers" }
+]
 license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.10"
