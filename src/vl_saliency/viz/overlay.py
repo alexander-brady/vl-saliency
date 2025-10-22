@@ -1,3 +1,5 @@
+from typing import overload
+
 import matplotlib.pyplot as plt
 import torch
 from matplotlib.axes import Axes
@@ -5,6 +7,30 @@ from matplotlib.figure import Figure, SubFigure
 from PIL import Image
 
 from vl_saliency.transforms import normalize, upscale
+
+
+@overload
+def overlay(
+    saliency_map: torch.Tensor,
+    image: Image.Image | None = None,
+    *,
+    ax: None = None,
+    title: str | None = "Saliency Map",
+    figsize: tuple[int, int] = (6, 6),
+    show_colorbar: bool = True,
+    **plot_kwargs,
+) -> Figure: ...
+@overload
+def overlay(
+    saliency_map: torch.Tensor,
+    image: Image.Image | None = None,
+    *,
+    ax: Axes,
+    title: str | None = "Saliency Map",
+    figsize: tuple[int, int] = (6, 6),
+    show_colorbar: bool = True,
+    **plot_kwargs,
+) -> SubFigure: ...
 
 
 def overlay(
