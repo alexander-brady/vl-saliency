@@ -1,258 +1,132 @@
-from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Literal
 
 import torch
-from einops.layers.torch import Rearrange, Reduce
-from transformers import PreTrainedModel, ProcessorMixin
 
-from ..methods import resolve
-from .localization_heads import retrieve_localization_heads
-from .logger import get_logger
-from .utils import (
-    ALL_LAYERS,
-    _get_image_token_id,
-    _get_vision_patch_shape,
-    _select_layers,
-)
+if TYPE_CHECKING:
+    from transformers import ProcessorMixin
 
-logger = get_logger(__name__)
+from ..selectors import Selector
+from ..transforms.pipe import TraceTransform
+from .map import SaliencyMap
 
 
-class SaliencyTrace:
+class Trace:
     """
-    Capture activation maps and gradients and compute saliency maps.
+    Captured attention and gradient data from a model inference.
 
-    Args:
-        model (PreTrainedModel): The model to trace.
-        processor (ProcessorMixin): The processor for the model.
-        method (str | Callable): The method to use for saliency computation.
-        layers (int | object | Sequence[int]): The layers to use for saliency computation.
-            - None: use all layers
-            - int > 0: use the first `extracted_layers` layers
-            - int < 0: use the last `abs(extracted_layers)` layers
-            - Sequence[int]: use specific layer indices
-        head_reduce (str): The reduction method to use for the head layer.
-        layer_reduce (str): The reduction method to use for the intermediate layers.
-        use_localization_heads (bool): Whether to use only localization heads for saliency map. May lead to better results.
+    Attributes:
+        attn (list[torch.Tensor]): List of attention tensors per image. Each tensor has shape [layers * heads, tokens, tokens].
+        grad (list[torch.Tensor] | None, default=None): List of gradient tensors per image. Each tensor has shape [layers * heads, tokens, tokens] or None if gradients were not captured.
+        processor (ProcessorMixin | None, default=None): The processor used for tokenization and decoding.
+        image_token_id (int | None, default=None): The token ID used to represent image tokens.
+        gen_start (int | None, default=None): The starting index of generated tokens in the sequence.
+        generated_ids (torch.Tensor | None, default=None): The tensor of generated token IDs during inference.
+
+    Methods:
+        map(token, image_index, mode) -> SaliencyMap: Generate a SaliencyMap for a specific token using stored data.
+        visualize_tokens(): Visualize the generated tokens using the processor.
     """
 
     def __init__(
         self,
-        model: PreTrainedModel,
-        processor: ProcessorMixin,
+        attn: list[torch.Tensor],
+        grad: list[torch.Tensor] | None = None,
         *,
-        method: str | Callable[[torch.Tensor, torch.Tensor], torch.Tensor] = "agcam",
-        layers: int | object | Sequence[int] = ALL_LAYERS,
-        head_reduce: str = "sum",
-        layer_reduce: str = "sum",
-        use_localization_heads: bool = False,
+        processor: ProcessorMixin | None = None,
+        image_token_id: int | None = None,
+        gen_start: int | None = None,
+        generated_ids: torch.Tensor | None = None,
     ):
-        self.model = model
+        self.attn = attn  # list of [layers * heads, tokens, tokens] per image
+        self.grad = grad  # list of [layers * heads, tokens, tokens] per image or None
+
+        # Processor info
         self.processor = processor
+        self.image_token_id = image_token_id
 
-        # Retrieve image_token_id to identify image vs text tokens.
-        self.image_token_id = _get_image_token_id(model.config)
-        if self.image_token_id == -1:
-            logger.warning(
-                "Could not infer image token id from model config. "
-                "Please set it manually via `trace.image_token_id = ...`"
-            )
+        # Generation info
+        self.gen_start = gen_start
+        self.generated_ids = generated_ids
 
-        # For models with static vision token counts per image, retrieve it
-        self.patch_shape = _get_vision_patch_shape(model.config)
-        if self.patch_shape is None:
-            logger.info("Image patch shape not found in model config.Falling back to infer it from the input images.")
-
-        # Store saliency computation method
-        self.method = resolve(method) if isinstance(method, str) else method
-
-        # Store saliency aggregation functions
-        self.layers = layers
-        self.head_reduce = head_reduce
-        self.layer_reduce = layer_reduce
-        self.use_localization_heads = use_localization_heads
-
-        # Runtime caches (populated by capture)
-        self._attn: torch.Tensor | None = None
-        self._grad: torch.Tensor | None = None
-
-    def capture(
+    def apply(
         self,
-        *,
-        generated_ids: torch.Tensor,  # [1, T_gen]
-        input_ids: torch.Tensor,  # [1, T_prompt]
-        pixel_values: torch.Tensor,  # [image_count, C, H, W],
-        visualize_tokens: bool = False,
-        **kwargs: dict | None,
-    ):
-        """
-        Capture activation maps and gradients for saliency computation on a model generation.
+        token: int | Selector,
+        transform: TraceTransform,
+        image_index: int = 0,
+    ) -> SaliencyMap:
+        """Apply a TraceTransform, returning a SaliencyMap."""
+        if self.grad is None:
+            raise ValueError("TraceTransforms needs grad to be stored")
 
-        Args:
-            generated_ids (torch.Tensor): The token ids generated from the model.
-            input_ids (torch.Tensor): The token ids of the input prompt.
-            pixel_values (torch.Tensor): The pixel values of the input images.
-            visualize_tokens (bool): Whether to create the token visualization widget.
-            **kwargs: Additional keyword arguments.
+        token = self._get_token_index(token)
 
-        Throws:
-            ValueError: If the input or generated tensors are not 1D.
-            ValueError: If no image patch size is set or can be inferred from kwargs[`image_grid_thw`].
-            ValueError: If the image tokens shape does not match the expected shape.
-        """
-        # Ensure batch size is 1
-        if generated_ids.ndim != 2 or input_ids.ndim != 2 or generated_ids.size(0) != 1 or input_ids.size(0) != 1:
-            raise ValueError("Batch size must be 1 and tensors must be 2D [B,T].")
+        attn_map = self._get_tkn2img_map(token, image_index, "attn")
+        grad_map = self._get_tkn2img_map(token, image_index, "grad")
 
-        # Get image token indices
-        image_grid_thw = kwargs.get("image_grid_thw", None)  # Common in Qwen Models
-        if image_grid_thw is not None:
-            image_grid_thw = torch.as_tensor(image_grid_thw).to(self.model.device, dtype=torch.int32)
-            self._image_patch_shapes = (image_grid_thw[:, 1:] // 2).tolist()  # each row -> [H, W]
-        elif self.patch_shape is None:
-            raise ValueError(
-                "Image token patch shape not set. Please set `self.patch_shape = (H, W)`"
-                "or pass `image_grid_thw` in kwargs (Tensor: [n_images, 3] = [1, H * 2, W * 2])"
-            )
-        else:
-            image_count = pixel_values.shape[0]
-            self._image_patch_shapes = [self.patch_shape] * image_count
+        return transform(attn_map, grad_map)
 
-        # Ensure image sizes line up as expected
-        patch_sizes = [H * W for H, W in self._image_patch_shapes]
-        expected_img_tkns = sum(patch_sizes)
-        image_token_indices = torch.where(input_ids == self.image_token_id)[1]
-        if image_token_indices.numel() != expected_img_tkns:
-            raise ValueError(f"Expected {expected_img_tkns} image tokens, but got {image_token_indices.numel()}")
+    def _get_token_index(self, token: int | Selector) -> int:
+        """Select desired token."""
+        if isinstance(token, Selector):
+            token = token.select(self)
+        token = token + (self.gen_start or 0)
+        return token
 
-        splits = torch.split(image_token_indices, patch_sizes)  # Tuple of tensors
-        self._image_patches = [t.detach().to(torch.long).cpu() for t in splits]
+    def _get_tkn2img_map(self, token: int, image_index: int, mode: Literal["attn", "grad"]) -> SaliencyMap:
+        """Get text-to-image saliency map."""
+        if mode == "attn":
+            tkn2img_map = self.attn[image_index]
+        elif mode == "grad":
+            if self.grad is None:
+                raise ValueError("No gradient data stored in this trace.")
+            tkn2img_map = self.grad[image_index]
 
-        device = next(self.model.parameters()).device
-        pad_id = self.processor.tokenizer.pad_token_id 
+        # Extract the token-to-image map
+        tkn2img_map = tkn2img_map[:, :, token, :, :]  # [layers, heads, 1, H, W]
+        tkn2img_map = tkn2img_map.squeeze(2)  # [layers, heads, H, W]
 
-        generated_ids = generated_ids.clone().detach().to(device)
-        pixel_values = pixel_values.to(device)
-
-        self._gen_start = input_ids.shape[1]
-        attention_mask = (generated_ids != pad_id).long().to(device)
-
-        was_training = self.model.training
-        self.model.train()
-
-        # Forward pass
-        self.model.zero_grad(set_to_none=True)
-        outputs = self.model(
-            input_ids=generated_ids,
-            attention_mask=attention_mask,
-            labels=generated_ids,  # teacher forcing for scalar loss
-            pixel_values=pixel_values,
-            image_grid_thw=image_grid_thw,
-            use_cache=False,
-            output_attentions=True,
-            return_dict=True,
-        )
-
-        attn_matrices = list(outputs.attentions)  # layers * [batch, heads, tokens, tokens]
-
-        for attn in attn_matrices:
-            attn.retain_grad()
-
-        # Backward pass
-        outputs.loss.backward()
-
-        grad_attn = [attn.grad for attn in attn_matrices]
-
-        # [num_layers, heads, tokens, tokens]
-        self._attn = torch.cat([a.detach().cpu() for a in attn_matrices], dim=0)
-        self._grad = torch.cat([g.detach().cpu() for g in grad_attn], dim=0)
-
-        self.model.train(was_training)
-
-        if visualize_tokens:
-            from ..viz.tokens import render_token_ids
-
-            render_token_ids(
-                generated_ids=generated_ids,
-                processor=self.processor,
-                gen_start=self._gen_start,
-                skip_tokens=self.image_token_id,
-            )
+        return SaliencyMap(tkn2img_map)
 
     def map(
         self,
-        token: int = -1,
-        *,
-        image: int = 0,
-        method: str | Callable[[torch.Tensor, torch.Tensor], torch.Tensor] | None = None,
-        layers: int | object | Sequence[int] | None = None,
-        head_reduce: str | None = None,
-        layer_reduce: str | None = None,
-        use_localization_heads: bool | None = None,
-        **method_kwargs,
-    ) -> torch.Tensor:
+        token: int | Selector,
+        image_index: int = 0,
+        mode: Literal["attn", "grad"] = "attn",
+    ) -> SaliencyMap:
         """
-        Compute the saliency map for a specific token and image patch.
+        Generate a SaliencyMap for a specific token using attention or gradient data.
 
         Args:
-            token (int, default=-1): The absolute index of the token to compute the saliency map for.
-            image (int): The index of the image patch to compute the saliency map for. Defaults to 0.
-            method: If set, overrides the method for computing the saliency map.
-            layers: If set, overrides the attention layers used for computing the saliency map.
-            head_reduce: If set, overrides the aggregation method for the attention heads.
-            layer_reduce: If set, overrides the aggregation method for the layers.
-            use_localization_heads: If set, overrides to only use localization heads for saliency map.
-            **method_kwargs: Additional keyword arguments for the saliency map method.
+            token (int | Selector): The token index or a Selector instance to choose the token.
+            image_index (int, default=0): The index of the image in the trace to use.
+            mode (Literal["attn", "grad"], default="attn"): Whether to use attention or gradient data.
+
         Returns:
-            torch.Tensor: The computed saliency map. [1, 1, H, W]
+            SaliencyMap: The resulting saliency map for the specified token.
 
         Raises:
-            ValueError: If no generation has been captured.
-            ValueError: If the specified method is unknown.
+            ValueError: If the mode is "grad" and no gradient data is stored.
         """
-        if self._attn is None or self._grad is None:
-            raise ValueError("No generation has been captured. Please run `capture` first.")
+        token = self._get_token_index(token)
+        return self._get_tkn2img_map(token, image_index, mode)
 
-        H, W = self._image_patch_shapes[image]
-        patch_indices = self._image_patches[image]
+    def visualize_tokens(self):
+        """
+        Visualize the generated tokens using the processor.
 
-        # If using localization heads, we compute heads from all layers
-        use_localization_heads = (
-            self.use_localization_heads if use_localization_heads is None else use_localization_heads
+        Raises:
+            ValueError: If the processor, generated_ids, or gen_start is not set.
+        """
+        if self.processor is None or self.generated_ids is None or self.gen_start is None:
+            raise ValueError("Processor, generated_ids, and gen_start must be set to visualize tokens.")
+
+        from ..viz.tokens import render_token_ids
+
+        # Render the token IDs using the processor
+        render_token_ids(
+            generated_ids=self.generated_ids,
+            processor=self.processor,
+            gen_start=self.gen_start,
+            skip_tokens=self.image_token_id,
+            only_number_generated=True,
         )
-        if use_localization_heads and (layers is not None or layer_reduce is not None):
-            logger.warning(
-                "`layers` and `layer_reduce` arguments are ignored when `use_localization_heads` is True, treated as ALL_LAYERS."
-            )
-            layers = ALL_LAYERS
-
-        # Use only selected layers for saliency computation
-        attn = _select_layers(self._attn, layers or self.layers)
-        grad = _select_layers(self._grad, layers or self.layers)
-
-        # Retrieve attention/gradient from token to image
-        img_attn = attn[:, :, token, patch_indices]  # [num_layers, heads, patch_size]
-        img_grad = grad[:, :, token, patch_indices]  # [num_layers, heads, patch_size]
-
-        # Compute saliency
-        if isinstance(method, str):
-            method = resolve(method)
-        elif method is None:
-            method = self.method
-        mask = method(img_attn, img_grad, **method_kwargs)
-
-        if use_localization_heads or (use_localization_heads is None and self.use_localization_heads):
-            # Heuristically determine localization heads
-            localization_heads = retrieve_localization_heads(attn=img_attn, patch_size=(H, W), max_keep=5)
-
-            # Select only localization heads -> [num_localization_heads, patch_size]
-            layer_indices, head_indices = zip(*localization_heads, strict=True)
-            mask = mask[layer_indices, head_indices]
-        else:
-            # Aggregate over layers -> [l, p]
-            mask = Reduce("l h p -> l p", reduction=head_reduce or self.head_reduce)(mask)
-
-        # Aggregate over heads -> [1, 1, h, w]
-        mask = Reduce("l p -> p", reduction=layer_reduce or self.layer_reduce)(mask)
-        mask = Rearrange("(h w) -> 1 1 h w", h=H, w=W)(mask)
-
-        return mask

@@ -10,6 +10,9 @@ try:
 except Exception:  # pragma: no cover
     display = HTML = None
 
+_SPACE_MARKERS = ("▁", "Ġ")
+_NEWLINE_MARKERS = {"\n", "\\n", "Ċ", "▁\n"}
+
 
 @overload
 def render_token_ids(
@@ -18,6 +21,7 @@ def render_token_ids(
     return_html: Literal[True],
     gen_start: int = ...,
     skip_tokens: int | Sequence[int] | None = ...,
+    only_number_generated: bool = ...,
 ) -> str: ...
 @overload
 def render_token_ids(
@@ -26,6 +30,7 @@ def render_token_ids(
     return_html: Literal[False] = ...,
     gen_start: int = ...,
     skip_tokens: int | Sequence[int] | None = ...,
+    only_number_generated: bool = ...,
 ) -> None: ...
 
 
@@ -35,6 +40,7 @@ def render_token_ids(
     return_html: bool = False,
     gen_start: int = 0,
     skip_tokens: int | Sequence[int] | None = None,
+    only_number_generated: bool = False,
 ) -> str | None:
     """
     Visualizes the generated text from the model.
@@ -45,6 +51,7 @@ def render_token_ids(
         gen_start (int): Index from which tokens are considered generated.
         skip_tokens (Optional[Union[int, List[int]]] = None): Token IDs to skip in the visualization.
         return_html (bool): If True, return the HTML string; otherwise display (if IPython available).
+        only_number_generated (bool): If True, only number the generated tokens in the tooltip.
 
     Returns:
         HTML string if return_html=True, else None.
@@ -59,9 +66,6 @@ def render_token_ids(
 
     skip_set = {skip_tokens} if isinstance(skip_tokens, int) else set(skip_tokens or [])
     special_ids = set(getattr(tok, "all_special_ids", []) or [])
-
-    space_markers = ("▁", "Ġ")
-    newline_markers = {"\n", "\\n", "Ċ", "▁\n"}
 
     # Styles
     FONTS = "font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;"
@@ -80,18 +84,28 @@ def render_token_ids(
         style = PROMPT if i < gen_start else GENERATED
 
         # Show faded leading space token (▁ or Ġ), if present
-        if token.startswith(space_markers):
+        if token.startswith(_SPACE_MARKERS):
             fmt = f'<span style="{PREFIX}">{token[0]}</span>{html.escape(token[1:])}'
         elif tid in special_ids:
             fmt = f'<span style="{SPECIAL}">{html.escape(token)}</span>'
         else:
             fmt = html.escape(token)
 
-        title = f"Token: {token} (ID: {tid})\nIndex: {i}"
+        # Set tooltip content
+        if only_number_generated:
+            if i < gen_start:
+                title = f"Token: {token} (ID: {tid})"
+            else:
+                title = f"Token: {token} (ID: {tid})\nIndex: {i - gen_start}"
+        else:
+            title = f"Token: {token} (ID: {tid})\nIndex: {i}"
+
+        # Render token span
         span = f'<div class="token" style="{COMMON} {style}" title="{html.escape(title)}">{fmt}</div>'
         buffer.append(span)
 
-        if token in newline_markers:
+        # Show line breaks for newline tokens
+        if token in _NEWLINE_MARKERS:
             buffer.append("<br>")
 
     buffer.append("</div>")
