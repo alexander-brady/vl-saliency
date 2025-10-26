@@ -47,7 +47,7 @@ def render_token_ids(
 
     Args:
         generated_ids (torch.Tensor): The generated token IDs.
-        processor: The processor used to process input.
+        processor (ProcessorMixin): The processor used to process input.
         gen_start (int): Index from which tokens are considered generated.
         skip_tokens (Optional[Union[int, List[int]]] = None): Token IDs to skip in the visualization.
         return_html (bool): If True, return the HTML string; otherwise display (if IPython available).
@@ -58,10 +58,12 @@ def render_token_ids(
     """
     if generated_ids.dim() == 2:
         token_ids = generated_ids[0].tolist()
-    else:
+    elif generated_ids.dim() == 1:
         token_ids = generated_ids.tolist()
+    else:
+        raise ValueError("generated_ids must be a 1D or 2D tensor.")
 
-    tok = processor.tokenizer
+    tok = processor.tokenizer  # type: ignore[attr-defined]
     tokens = tok.convert_ids_to_tokens(token_ids, skip_special_tokens=False)
 
     skip_set = {skip_tokens} if isinstance(skip_tokens, int) else set(skip_tokens or [])

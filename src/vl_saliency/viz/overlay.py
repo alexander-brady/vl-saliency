@@ -44,7 +44,7 @@ def overlay(
     **plot_kwargs,
 ) -> Figure | SubFigure:
     """
-    Visualizes the saliency map on top of the image.
+    Plot saliency map overlaid on an optional image.
 
     Args:
         saliency_map (torch.Tensor): The saliency map to visualize. Shape: [1, 1, H, W]

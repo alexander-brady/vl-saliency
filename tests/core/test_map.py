@@ -7,13 +7,6 @@ from matplotlib.figure import Figure
 
 from vl_saliency.core.map import SaliencyMap
 
-
-@pytest.fixture
-def smap() -> SaliencyMap:
-    t = torch.arange(0, 16.0).view(1, 1, 4, 4)
-    return SaliencyMap(t)
-
-
 # ------------------------- Initialization -------------------------
 
 
