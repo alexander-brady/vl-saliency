@@ -1,6 +1,8 @@
+import torch
 from vl_saliency.utils.transformer_utils import (
     _get_image_token_id,
     _get_vision_patch_shape,
+    _image_patch_shapes
 )
 
 # Small helper to mimic HF config behavior: supports `"key" in config` and attribute access.
@@ -47,3 +49,27 @@ def test_get_vision_patch_shape_from_vision_config():
 def test_get_vision_patch_shape_none_when_missing():
     cfg = ConfigLike()  # no mm_tokens_per_image, no vision_config
     assert _get_vision_patch_shape(cfg) is None
+
+# ------------------------- _image_patch_shapes -----------------------------
+
+def test_image_patch_shapes_from_image_grid_thw():
+    image_grid_thw = torch.tensor([[3, 8, 8], [3, 16, 16]])  # 2 images
+    patches = _image_patch_shapes(image_count=2, image_grid_thw=image_grid_thw)
+    assert patches == [(4, 4), (8, 8)]  # each dimension halved
+    
+def test_image_patch_shapes_from_patch_shape():
+    patches = _image_patch_shapes(image_count=3, patch_shape=(7, 7))
+    assert patches == [(7, 7), (7, 7), (7, 7)]
+    
+def test_image_patch_shapes_raises_when_cannot_infer():
+    try:
+        _image_patch_shapes(image_count=1)
+    except ValueError as e:
+        assert "Cannot infer image patch shapes" in str(e)
+        
+def test_image_patch_shapes_raises_on_mismatched_image_count():
+    image_grid_thw = torch.tensor([[3, 8, 8]])  # only 1 image
+    try:
+        _image_patch_shapes(image_count=2, image_grid_thw=image_grid_thw)
+    except ValueError as e:
+        assert "Number of image grid sizes (1) does not match number of images (2)." in str(e)

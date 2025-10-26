@@ -45,6 +45,7 @@ def _image_patch_shapes(
             raise ValueError(
                 f"Number of image grid sizes ({len(patches)}) does not match number of images ({image_count})."
             )
+        patches = [tuple(patch) for patch in patches]
 
     elif patch_shape is not None:
         patches = [patch_shape] * image_count
