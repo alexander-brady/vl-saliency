@@ -18,8 +18,8 @@ class Trace:
     Captured attention and gradient data from a model inference.
 
     Attributes:
-        attn (list[torch.Tensor] | None): List of attention tensors per image. Each tensor has shape [layers * heads, tokens, tokens] or None if attention was not captured.
-        grad (list[torch.Tensor] | None, default=None): List of gradient tensors per image. Each tensor has shape [layers * heads, tokens, tokens] or None if gradients were not captured.
+        attn (list[torch.Tensor] | None): List of attention tensors per image. Each tensor has shape [layers, heads, gen_tokens, img_tokens, img_tokens] or None if attention was not captured.
+        grad (list[torch.Tensor] | None, default=None): List of gradient tensors per image. Each tensor has shape [layers, heads, gen_tokens, img_tokens, img_tokens] or None if gradients were not captured.
         processor (ProcessorMixin | None, default=None): The processor used for tokenization and decoding.
         image_token_id (int | None, default=None): The token ID used to represent image tokens.
         gen_start (int | None, default=None): The starting index of generated tokens in the sequence.
@@ -40,17 +40,22 @@ class Trace:
         gen_start: int | None = None,
         generated_ids: torch.Tensor | None = None,
     ):
-        self.attn = attn  # list of [layers * heads, tokens, tokens] per image or None
-        self.grad = grad  # list of [layers * heads, tokens, tokens] per image or None
+        # TODO: Validate attn and grad shapes
 
         # Determine default mode
+        if attn is None and grad is None:
+            raise ValueError("At least one of attn or grad must be provided.")
         self._default: Literal["attn", "grad"] = "attn" if attn is not None else "grad"
+
+        # Stored data
+        self.attn = attn  # list of [layers, heads, gen_tokens, img_tokens, img_tokens] per image or None
+        self.grad = grad  # list of [layers, heads, gen_tokens, img_tokens, img_tokens] per image or None
 
         # Processor info
         self.processor = processor
         self.image_token_id = image_token_id
 
-        # Generation info
+        # Generation info (for visualization only)
         self.gen_start = gen_start
         self.generated_ids = generated_ids
 
@@ -72,10 +77,9 @@ class Trace:
         return transform(attn_map, grad_map)
 
     def _get_token_index(self, token: int | Selector) -> int:
-        """Select desired token."""
+        """Select desired token (relative to generated tokens)."""
         if isinstance(token, Selector):
             token = token.select(self)
-        token = token + (self.gen_start or 0)
         return token
 
     def _get_tkn2img_map(self, token: int, image_index: int, mode: Literal["attn", "grad"]) -> SaliencyMap:
@@ -90,9 +94,7 @@ class Trace:
             tkn2img_map = self.grad[image_index]
 
         # Extract the token-to-image map
-        tkn2img_map = tkn2img_map[:, :, token, :, :]  # [layers, heads, 1, H, W]
-        tkn2img_map = tkn2img_map.squeeze(2)  # [layers, heads, H, W]
-
+        tkn2img_map = tkn2img_map[:, :, token, :, :]  # [layers, heads, H, W]
         return SaliencyMap(tkn2img_map)
 
     def map(
