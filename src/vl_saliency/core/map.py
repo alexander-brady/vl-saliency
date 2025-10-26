@@ -8,7 +8,7 @@ from matplotlib.figure import Figure
 from PIL.Image import Image
 
 from ..transforms import Aggregate
-from ..transforms.pipe import Pipeline, Transform
+from ..transforms.pipe import Transform
 
 _ALLOWED_TORCH_FUNCTIONS = frozenset(
     {
@@ -136,18 +136,11 @@ class SaliencyMap:
                 Aggregation method for layers. If None, no aggregation is performed on layers.
             head_reduce (Literal['mean', 'sum', 'max', 'min', 'prod'] | None, default='mean'):
                 Aggregation method for heads. If None, no aggregation is performed on heads.
+       
         Returns:
             SaliencyMap: The aggregated saliency map.
         """
-        pipe = Pipeline()
-
-        if layer_reduce:
-            pipe >>= Aggregate(dim="layers", method=layer_reduce)
-
-        if head_reduce:
-            pipe >>= Aggregate(dim="heads", method=head_reduce)
-
-        return self.apply(pipe)
+        return self >> Aggregate(layer_reduce=layer_reduce, head_reduce=head_reduce)
 
     def plot(
         self,

@@ -1,5 +1,7 @@
 from typing import Literal
 
+import torch
+
 from ..core.map import SaliencyMap
 from .pipe import Chainable
 
@@ -71,31 +73,37 @@ class Aggregate(Chainable):
     """
 
     def __init__(
-        self, dim: Literal["layers", "heads", "both"], method: Literal["mean", "sum", "max", "min", "prod"] = "mean"
+        self,
+        layer_reduce: Literal["mean", "sum", "max", "min", "prod"] | None = "mean",
+        head_reduce: Literal["mean", "sum", "max", "min", "prod"] | None = "mean",
     ):
-        self.dim = dim
-        self.method = method
+        self.layer_reduce = layer_reduce
+        self.head_reduce = head_reduce
 
     def __call__(self, map: SaliencyMap) -> SaliencyMap:
         tensor = map.tensor()  # shape: [layers, heads, H, W]
-
-        reduced_axis = {"layers": [0], "heads": [1], "both": [0, 1]}[self.dim]
-
-        match self.method:
-            case "mean":
-                aggregated = tensor.mean(dim=reduced_axis, keepdim=True)
-            case "sum":
-                aggregated = tensor.sum(dim=reduced_axis, keepdim=True)
-            case "max":
-                aggregated = tensor.amax(dim=reduced_axis, keepdim=True)
-            case "min":
-                aggregated = tensor.amin(dim=reduced_axis, keepdim=True)
-            case "prod":
-                for i in list(sorted(reduced_axis))[::-1]:
-                    tensor = tensor.prod(dim=i, keepdim=True)
-                aggregated = tensor
-            case _:
-                raise ValueError(f"Unknown aggregation method: {self.method}")
-
+        
+        if self.layer_reduce is not None:
+            tensor = self._reduce(tensor, self.layer_reduce, axis=0)
+            
+        if self.head_reduce is not None:
+            tensor = self._reduce(tensor, self.head_reduce, axis=1)
+            
         # aggregated shape: [1 or layers, 1 or heads, H, W]
-        return SaliencyMap(aggregated)
+        return SaliencyMap(tensor)
+
+    def _reduce(self, tensor: torch.Tensor, method: str, axis: int) -> torch.Tensor:
+        match method:
+            case "mean":
+                return tensor.mean(dim=axis, keepdim=True)
+            case "sum":
+                return tensor.sum(dim=axis, keepdim=True)
+            case "max":
+                return tensor.amax(dim=axis, keepdim=True)
+            case "min":
+                return tensor.amin(dim=axis, keepdim=True)
+            case "prod":
+                return tensor.prod(dim=axis, keepdim=True)
+            case _:
+                raise ValueError(f"Unknown aggregation method: {method}")
+        return tensor
