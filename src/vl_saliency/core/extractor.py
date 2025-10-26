@@ -87,10 +87,10 @@ class SaliencyExtractor:
         # Ensure at least one of attention or gradients is stored
         store_attns = store_attns if store_attns is not None else self.store_attns
         store_grads = store_grads if store_grads is not None else self.store_grads
-        
+
         if not store_attns and not store_grads:
-            raise ValueError("At least one of store_attns or store_grads must be True to capture a trace.")        
-        
+            raise ValueError("At least one of store_attns or store_grads must be True to capture a trace.")
+
         # Ensure batch size is 1
         if generated_ids.ndim != 2 or input_ids.ndim != 2 or generated_ids.size(0) != 1 or input_ids.size(0) != 1:
             raise ValueError("Batch size must be 1 and tensors must be 2D [B,T].")
@@ -152,7 +152,7 @@ class SaliencyExtractor:
             )
 
         attn_matrices = list(outputs.attentions)  # layers * [batch, heads, tokens, tokens]
-        
+
         attn = None
         grad = None
 
@@ -169,19 +169,17 @@ class SaliencyExtractor:
             grad = grad[:, :, gen_start:, :]  # Keep only generated tokens
 
         if store_attns:
-            attn = torch.cat(
-                [a.detach().cpu() for a in attn_matrices], dim=0
-            )  # [num_layers, heads, tokens, tokens]
+            attn = torch.cat([a.detach().cpu() for a in attn_matrices], dim=0)  # [num_layers, heads, tokens, tokens]
             attn = attn[:, :, gen_start:, :]  # Keep only generated tokens
-            
+
         self.model.train(was_training)
-    
+
         # Keep only the text-to-image attention/gradients
         text2img_attn = [] if attn is not None else None
         text2img_grad = [] if grad is not None else None
         for i, idxs in enumerate(image_patches):
             H, W = patch_shapes[i]
-            
+
             if attn is not None and text2img_attn is not None:
                 a = attn.index_select(-1, idxs).contiguous()  # [layers, heads, gen_tokens, image_tokens]
                 a = a.view(a.shape[0], a.shape[1], H, W)  # [layers, heads, gen_tokens, H, W]

@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Literal
 
 import torch
@@ -39,7 +41,7 @@ class Trace:
     ):
         self.attn = attn  # list of [layers * heads, tokens, tokens] per image or None
         self.grad = grad  # list of [layers * heads, tokens, tokens] per image or None
-        
+
         # Determine default mode
         self._default: Literal["attn", "grad"] = "attn" if attn is not None else "grad"
 
@@ -114,7 +116,7 @@ class Trace:
         """
         if mode is None:
             mode = self._default
-        
+
         token = self._get_token_index(token)
         return self._get_tkn2img_map(token, image_index, mode)
 

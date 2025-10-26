@@ -1,9 +1,12 @@
-from typing import Literal
+from __future__ import annotations
+
+from typing import Literal, TYPE_CHECKING
 
 import torch
 
-from ..core.map import SaliencyMap
 from .pipe import Chainable
+
+from ..core.map import SaliencyMap
 
 
 class SelectLayers(Chainable):
@@ -82,13 +85,13 @@ class Aggregate(Chainable):
 
     def __call__(self, map: SaliencyMap) -> SaliencyMap:
         tensor = map.tensor()  # shape: [layers, heads, H, W]
-        
+
         if self.layer_reduce is not None:
             tensor = self._reduce(tensor, self.layer_reduce, axis=0)
-            
+
         if self.head_reduce is not None:
             tensor = self._reduce(tensor, self.head_reduce, axis=1)
-            
+
         # aggregated shape: [1 or layers, 1 or heads, H, W]
         return SaliencyMap(tensor)
 

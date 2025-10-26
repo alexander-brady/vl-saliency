@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import torch
 from matplotlib.figure import Figure
 from PIL.Image import Image
 
-from ..transforms import Aggregate
-from ..transforms.pipe import Transform
+if TYPE_CHECKING:
+    from ..transforms.pipe import Transform
 
 _ALLOWED_TORCH_FUNCTIONS = frozenset(
     {
@@ -136,10 +136,11 @@ class SaliencyMap:
                 Aggregation method for layers. If None, no aggregation is performed on layers.
             head_reduce (Literal['mean', 'sum', 'max', 'min', 'prod'] | None, default='mean'):
                 Aggregation method for heads. If None, no aggregation is performed on heads.
-       
+
         Returns:
             SaliencyMap: The aggregated saliency map.
         """
+        from ..transforms import Aggregate
         return self >> Aggregate(layer_reduce=layer_reduce, head_reduce=head_reduce)
 
     def plot(
