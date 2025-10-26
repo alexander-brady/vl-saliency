@@ -66,9 +66,10 @@ class SaliencyMap:
     def _unwrap(x):
         return x.map if isinstance(x, SaliencyMap) else x
 
-    def __torch_function__(self, func, types, args=(), kwargs=None):
+    @classmethod
+    def __torch_function__(cls, func, types, args=(), kwargs=None):
         if func not in _ALLOWED_TORCH_FUNCTIONS:
-            return NotImplementedError("Unsupported torch function for SaliencyMap.")
+            raise NotImplementedError("Unsupported torch function for SaliencyMap.")
 
         kwargs = kwargs or {}
 
@@ -77,8 +78,8 @@ class SaliencyMap:
         if name.endswith("_") or "out" in kwargs:
             raise TypeError("SaliencyMap is immutable; in-place/out= ops are not allowed.")
 
-        uargs = tuple(self._unwrap(a) for a in args)
-        ukw = {k: self._unwrap(v) for k, v in kwargs.items()}
+        uargs = tuple(cls._unwrap(a) for a in args)
+        ukw = {k: cls._unwrap(v) for k, v in kwargs.items()}
         res = func(*uargs, **ukw)
 
         # wrap only if it’s a 4D tensor again
@@ -103,13 +104,6 @@ class SaliencyMap:
         """Apply a Transform, returning a new SaliencyMap."""
         map = SaliencyMap(self.map)  # Create a new SaliencyMap with cloned tensor
         out = transform(map)
-
-        if not isinstance(out, SaliencyMap):
-            raise TypeError("Transform must return a SaliencyMap instance.")
-
-        if not out.map.dim() == 4:
-            raise ValueError("Resulting SaliencyMap must have 4 dimensions [layers, heads, H, W].")
-
         return out
 
     def tensor(self) -> torch.Tensor:
@@ -185,7 +179,7 @@ class SaliencyMap:
 
         from ..viz.overlay import overlay
 
-        fig = overlay(self.map, image=image, **plot_kwargs)
+        fig = overlay(self, image=image, **plot_kwargs)
 
         if show:
             fig.show()

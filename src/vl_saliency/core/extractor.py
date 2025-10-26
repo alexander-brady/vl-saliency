@@ -125,10 +125,6 @@ class SaliencyExtractor:
         splits = torch.split(image_token_indices, patch_sizes)
         image_patches = [t.detach().to(torch.long).cpu() for t in splits]
 
-        # Determine whether to store gradients
-        if store_grads is None:
-            store_grads = self.store_grads
-
         device = next(self.model.parameters()).device
         pad_id = self.processor.tokenizer.pad_token_id  # type: ignore
 
