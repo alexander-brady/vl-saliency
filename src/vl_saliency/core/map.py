@@ -170,7 +170,10 @@ class SaliencyMap:
         # Ensure shape is [1, 1, H, W]
         layers, heads, _, _ = self.map.shape
         if layers > 1 or heads > 1:
-            raise ValueError("Plotting is only supported for saliency maps with a single layer and head.")
+            raise ValueError(
+                "Plotting is only supported for saliency maps with a single layer and head. "
+                f"Current shape: [{layers}, {heads}, H, W]. Please `agg()` first."
+            )
 
         # Prepare overlay arguments
         plot_kwargs.pop("ax", None)

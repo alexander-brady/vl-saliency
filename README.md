@@ -94,11 +94,11 @@ from vl_saliency import transforms as T
 
 # Example: Normalize and plot a saliency map
 saliency_map = saliency_map >> T.normalize()
-saliency_map.plot(image, title="Normalized Saliency Map")
+saliency_map.agg().plot(image, title="Normalized Saliency Map")
 
 # Example: Binarize a saliency map, setting values below the mean to zero
 saliency_map = saliency_map.apply(T.Binarize(threshold="mean"))
-saliency_map.plot(image, title="Binarized Saliency Map")
+saliency_map.agg().plot(image, title="Binarized Saliency Map")
 
 # Example: Apply the sigmoid function to a saliency map, then aggregate across heads and layers
 saliency_map = saliency_map >> T.Sigmoid() >> T.Aggregate(layer_reduce="mean", head_reduce="mean")
@@ -107,7 +107,7 @@ saliency_map.plot(image, title="Sigmoid Saliency Map")
 
 ## Pipeline API
 
-For more complex visualization workflows, you can combine multiple `Transform` objects into a `Pipeline`.
+For more complex visualization workflows, you can combine multiple `Transform` objects into a reuseable `Pipeline`, allowing you to apply the same sequence of transforms to multiple saliency maps.
 
 ```python
 from vl_saliency import transforms as T
