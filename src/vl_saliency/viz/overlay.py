@@ -1,7 +1,6 @@
 from typing import overload
 
 import matplotlib.pyplot as plt
-import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure, SubFigure
 from PIL import Image
@@ -67,7 +66,7 @@ def overlay(
             mode="bilinear",
         )
     saliency_map >>= T.normalize()
-    
+
     # Convert to numpy array for plotting
     tensor = saliency_map.tensor()  # [1, 1, H, W]
     map = tensor.squeeze().cpu().numpy()  # [H, W]
