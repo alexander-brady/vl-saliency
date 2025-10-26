@@ -1,5 +1,5 @@
-from .engine import Engine
+from .extractor import SaliencyExtractor
 from .map import SaliencyMap
 from .trace import Trace
 
-__all__ = ["Engine", "Trace", "SaliencyMap"]
+__all__ = ["SaliencyExtractor", "Trace", "SaliencyMap"]

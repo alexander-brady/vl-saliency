@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Literal
 import torch
 
 if TYPE_CHECKING:
-    from transformers import ProcessorMixin
+    from transformers.processing_utils import ProcessorMixin
 
 from ..selectors import Selector
 from ..transforms.pipe import TraceTransform
@@ -15,7 +15,7 @@ class Trace:
     Captured attention and gradient data from a model inference.
 
     Attributes:
-        attn (list[torch.Tensor]): List of attention tensors per image. Each tensor has shape [layers * heads, tokens, tokens].
+        attn (list[torch.Tensor] | None): List of attention tensors per image. Each tensor has shape [layers * heads, tokens, tokens] or None if attention was not captured.
         grad (list[torch.Tensor] | None, default=None): List of gradient tensors per image. Each tensor has shape [layers * heads, tokens, tokens] or None if gradients were not captured.
         processor (ProcessorMixin | None, default=None): The processor used for tokenization and decoding.
         image_token_id (int | None, default=None): The token ID used to represent image tokens.
@@ -29,7 +29,7 @@ class Trace:
 
     def __init__(
         self,
-        attn: list[torch.Tensor],
+        attn: list[torch.Tensor] | None,
         grad: list[torch.Tensor] | None = None,
         *,
         processor: ProcessorMixin | None = None,
@@ -37,8 +37,11 @@ class Trace:
         gen_start: int | None = None,
         generated_ids: torch.Tensor | None = None,
     ):
-        self.attn = attn  # list of [layers * heads, tokens, tokens] per image
+        self.attn = attn  # list of [layers * heads, tokens, tokens] per image or None
         self.grad = grad  # list of [layers * heads, tokens, tokens] per image or None
+        
+        # Determine default mode
+        self._default: Literal["attn", "grad"] = "attn" if attn is not None else "grad"
 
         # Processor info
         self.processor = processor
@@ -75,6 +78,8 @@ class Trace:
     def _get_tkn2img_map(self, token: int, image_index: int, mode: Literal["attn", "grad"]) -> SaliencyMap:
         """Get text-to-image saliency map."""
         if mode == "attn":
+            if self.attn is None:
+                raise ValueError("No attention data stored in this trace.")
             tkn2img_map = self.attn[image_index]
         elif mode == "grad":
             if self.grad is None:
@@ -91,7 +96,7 @@ class Trace:
         self,
         token: int | Selector,
         image_index: int = 0,
-        mode: Literal["attn", "grad"] = "attn",
+        mode: Literal["attn", "grad"] | None = None,
     ) -> SaliencyMap:
         """
         Generate a SaliencyMap for a specific token using attention or gradient data.
@@ -99,7 +104,7 @@ class Trace:
         Args:
             token (int | Selector): The token index or a Selector instance to choose the token.
             image_index (int, default=0): The index of the image in the trace to use.
-            mode (Literal["attn", "grad"], default="attn"): Whether to use attention or gradient data.
+            mode (Literal["attn", "grad"], default=None): Whether to use attention or gradient data. If None, defaults to "attn" if attention data is available, otherwise "grad".
 
         Returns:
             SaliencyMap: The resulting saliency map for the specified token.
@@ -107,6 +112,9 @@ class Trace:
         Raises:
             ValueError: If the mode is "grad" and no gradient data is stored.
         """
+        if mode is None:
+            mode = self._default
+        
         token = self._get_token_index(token)
         return self._get_tkn2img_map(token, image_index, mode)
 
