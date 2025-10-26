@@ -4,12 +4,13 @@ from typing import TYPE_CHECKING, Literal
 
 import torch
 
+from ..selectors import Selector
+from .map import SaliencyMap
+
 if TYPE_CHECKING:
     from transformers.processing_utils import ProcessorMixin
 
-from ..selectors import Selector
-from ..transforms.pipe import TraceTransform
-from .map import SaliencyMap
+    from ..transforms.pipe import TraceTransform
 
 
 class Trace:
@@ -60,8 +61,8 @@ class Trace:
         image_index: int = 0,
     ) -> SaliencyMap:
         """Apply a TraceTransform, returning a SaliencyMap."""
-        if self.grad is None:
-            raise ValueError("TraceTransforms needs grad to be stored")
+        if self.attn is None or self.grad is None:
+            raise ValueError("TraceTransforms needs both attention and gradient data stored in the trace.")
 
         token = self._get_token_index(token)
 

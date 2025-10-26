@@ -3,7 +3,7 @@ from typing import Literal
 import torch
 
 from ..core.map import SaliencyMap
-from . import Chainable
+from .pipe import Chainable
 
 
 class Binarize(Chainable):

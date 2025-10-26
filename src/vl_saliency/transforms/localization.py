@@ -6,7 +6,7 @@ from scipy.ndimage import label
 
 from ..core.map import SaliencyMap
 from ..transforms.layers import SelectHeads
-from ..transforms.pipe import Chainable
+from .pipe import Chainable
 
 
 def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[float, np.ndarray, int]:

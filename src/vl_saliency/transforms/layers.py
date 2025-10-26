@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from typing import Literal, TYPE_CHECKING
+from typing import Literal
 
 import torch
 
-from .pipe import Chainable
-
 from ..core.map import SaliencyMap
+from .pipe import Chainable
 
 
 class SelectLayers(Chainable):

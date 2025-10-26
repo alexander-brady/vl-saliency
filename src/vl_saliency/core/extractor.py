@@ -95,7 +95,16 @@ class SaliencyExtractor:
         if generated_ids.ndim != 2 or input_ids.ndim != 2 or generated_ids.size(0) != 1 or input_ids.size(0) != 1:
             raise ValueError("Batch size must be 1 and tensors must be 2D [B,T].")
 
+        # Ensure generated_ids is an extension of input_ids
+        if generated_ids.size(1) < input_ids.size(1) or not torch.equal(
+            generated_ids[:, : input_ids.size(1)], input_ids
+        ):
+            raise ValueError("generated_ids must extend input_ids.")
+
+        # Ensure at least one image is provided
         image_count = pixel_values.shape[0]
+        if image_count < 1:
+            raise ValueError("At least one image must be provided in pixel_values.")
 
         # Get image token indices
         patch_shapes = _image_patch_shapes(
@@ -121,7 +130,7 @@ class SaliencyExtractor:
             store_grads = self.store_grads
 
         device = next(self.model.parameters()).device
-        pad_id = self.processor.tokenizer.pad_token_id
+        pad_id = self.processor.tokenizer.pad_token_id  # type: ignore
 
         generated_ids = generated_ids.clone().detach().to(device)
         pixel_values = pixel_values.to(device)
@@ -172,24 +181,26 @@ class SaliencyExtractor:
             attn = torch.cat([a.detach().cpu() for a in attn_matrices], dim=0)  # [num_layers, heads, tokens, tokens]
             attn = attn[:, :, gen_start:, :]  # Keep only generated tokens
 
+        # Restore model training state
         self.model.train(was_training)
 
         # Keep only the text-to-image attention/gradients
-        text2img_attn = [] if attn is not None else None
-        text2img_grad = [] if grad is not None else None
-        for i, idxs in enumerate(image_patches):
-            H, W = patch_shapes[i]
+        text2img_attn: list[torch.Tensor] | None = [] if attn is not None else None
+        text2img_grad: list[torch.Tensor] | None = [] if grad is not None else None
 
-            if attn is not None and text2img_attn is not None:
-                a = attn.index_select(-1, idxs).contiguous()  # [layers, heads, gen_tokens, image_tokens]
-                a = a.view(a.shape[0], a.shape[1], H, W)  # [layers, heads, gen_tokens, H, W]
-                text2img_attn.append(a)
+        # Helper to collect text-to-image attentions/gradients
+        def collect_text2img(indices, tensor, H, W, collect_list):
+            if tensor is not None and collect_list is not None:
+                t = tensor.index_select(dim=-1, index=indices)  # [layers, heads, gen_tokens, image_tokens]
+                t = t.contiguous().view(*t.shape[:-1], H, W)  # [layers, heads, gen_tokens, H, W]
+                collect_list.append(t)
 
-            if grad is not None and text2img_grad is not None:
-                g = grad.index_select(-1, idxs).contiguous()
-                g = g.view(g.shape[0], g.shape[1], H, W)
-                text2img_grad.append(g)
+        # Populate text-to-image lists
+        for indices, (H, W) in zip(image_patches, patch_shapes, strict=True):
+            collect_text2img(indices, attn, H, W, text2img_attn)
+            collect_text2img(indices, grad, H, W, text2img_grad)
 
+        # Construct and return Trace
         return Trace(
             attn=text2img_attn,
             grad=text2img_grad,

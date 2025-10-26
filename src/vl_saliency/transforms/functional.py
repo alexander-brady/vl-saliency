@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 from ..core.map import SaliencyMap
-from . import chainable
+from .pipe import chainable
 
 
 @chainable

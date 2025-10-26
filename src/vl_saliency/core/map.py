@@ -141,6 +141,7 @@ class SaliencyMap:
             SaliencyMap: The aggregated saliency map.
         """
         from ..transforms import Aggregate
+
         return self >> Aggregate(layer_reduce=layer_reduce, head_reduce=head_reduce)
 
     def plot(
