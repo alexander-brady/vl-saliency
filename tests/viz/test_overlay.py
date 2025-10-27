@@ -17,7 +17,7 @@ def dummy_image():  # simple RGB PIL image
 
 
 def test_overlay_returns_figure_without_image(smap):
-    fig = overlay(smap, image=None, show_colorbar=False)
+    fig = overlay(smap.agg(), image=None, show_colorbar=False)
     assert hasattr(fig, "axes")
     assert len(fig.axes) == 1
     ax = fig.axes[0]
@@ -26,7 +26,7 @@ def test_overlay_returns_figure_without_image(smap):
 
 
 def test_overlay_with_image_and_colorbar(smap, dummy_image):
-    fig = overlay(smap, image=dummy_image, show_colorbar=True)
+    fig = overlay(smap.agg(), image=dummy_image, show_colorbar=True)
     # should now have 2 axes: one for main plot, one for colorbar
     assert len(fig.axes) >= 1
     main_ax = fig.axes[0]
@@ -36,14 +36,14 @@ def test_overlay_with_image_and_colorbar(smap, dummy_image):
 
 def test_overlay_uses_existing_ax(smap, dummy_image):
     fig, ax = plt.subplots()
-    fig2 = overlay(smap, image=dummy_image, ax=ax, show_colorbar=False, title="custom")
+    fig2 = overlay(smap.agg(), image=dummy_image, ax=ax, show_colorbar=False, title="custom")
     # Should not create a new Figure
     assert fig2 is fig
     assert ax.get_title() == "custom"
 
 
 def test_overlay_custom_kwargs_passed_to_imshow(smap):
-    fig = overlay(smap, show_colorbar=False, cmap="viridis", alpha=0.7)
+    fig = overlay(smap.agg(), show_colorbar=False, cmap="viridis", alpha=0.7)
     im = fig.axes[0].images[-1]
     # Check colormap and alpha
     assert im.get_cmap().name == "viridis"

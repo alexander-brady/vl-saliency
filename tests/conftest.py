@@ -21,7 +21,7 @@ def dummy_processor():
 
 @pytest.fixture
 def smap() -> SaliencyMap:
-    t = torch.arange(0, 16.0).view(1, 1, 4, 4)
+    t = torch.randn(3, 4, 6, 6)  # [layers, heads, H, W]
     return SaliencyMap(t)
 
 

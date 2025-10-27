@@ -30,7 +30,7 @@ def test_equality_and_clone_independence(smap: SaliencyMap):
 def test_conversion_save(smap: SaliencyMap, tmp_path, monkeypatch):
     np_array = smap.numpy()
     assert isinstance(np_array, np.ndarray)
-    assert np_array.shape == (1, 1, 4, 4)
+    assert np_array.shape == smap.tensor().shape
 
     captured = {}
     monkeypatch.setattr(
@@ -111,8 +111,10 @@ def test_apply_transform_inplace(smap: SaliencyMap):
 
 
 def test_agg(smap: SaliencyMap):  # More tests in transforms/test_layers.py
-    agg_map = smap.agg()
-    expected = smap.tensor().mean(dim=(0, 1), keepdim=True)
+    agg_map = smap.agg(layer_reduce="mean", head_reduce="mean")
+    expected = smap.tensor().mean(dim=0, keepdim=True).mean(dim=1, keepdim=True)
+
+    assert agg_map.tensor().shape == (1, 1, smap.tensor().shape[2], smap.tensor().shape[3])
     assert torch.equal(agg_map.tensor(), expected)
 
 
