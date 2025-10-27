@@ -31,25 +31,18 @@ jobs:
       - uses: actions/setup-python@v5
         id: py
         with:
-          python-version: "3.13"
-          cache: "pip"
+          python-version-file: pyproject.toml
           cache-dependency-path: pyproject.toml
       - name: Install uv
-        run: curl -LsSf https://astral.sh/uv/install.sh | sh
-      - name: Cache uv
-        uses: actions/cache@v4
+        uses: astral-sh/setup-uv@v6
         with:
-          path: ~/.cache/uv
-          key: uv-${{ runner.os }}-${{ steps.py.outputs.python-version }}-${{ hashFiles('pyproject.toml', 'uv.lock') }}
-
-      - name: Install project + dev deps (extras)
-        run: |
-          uv pip install -e .[dev]
-
-
+          version: "0.9.5"
+          enable-cache: true
+      - name: Install the project
+        run: uv sync --locked --all-extras --dev
       - name: Run tests
         run: |
-          pytest -q --maxfail=1 --disable-warnings \
+          uv run pytest -q --maxfail=1 --disable-warnings \
             --cov=vl_saliency --cov-report=term-missing --color=yes
 
   lint:
