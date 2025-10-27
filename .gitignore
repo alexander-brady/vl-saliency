@@ -22,3 +22,6 @@ uv.lock
 
 # Cache Files
 .*_cache
+
+# Test
+.coverage

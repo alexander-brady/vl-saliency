@@ -1,17 +1,17 @@
 from typing import overload
 
 import matplotlib.pyplot as plt
-import torch
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure, SubFigure
 from PIL import Image
 
-from vl_saliency.transforms import normalize, upscale
+from vl_saliency import transforms as T
+from vl_saliency.core.map import SaliencyMap
 
 
 @overload
 def overlay(
-    saliency_map: torch.Tensor,
+    saliency_map: SaliencyMap,
     image: Image.Image | None = None,
     *,
     ax: None = None,
@@ -22,7 +22,7 @@ def overlay(
 ) -> Figure: ...
 @overload
 def overlay(
-    saliency_map: torch.Tensor,
+    saliency_map: SaliencyMap,
     image: Image.Image | None = None,
     *,
     ax: Axes,
@@ -34,7 +34,7 @@ def overlay(
 
 
 def overlay(
-    saliency_map: torch.Tensor,
+    saliency_map: SaliencyMap,
     image: Image.Image | None = None,
     *,
     ax: Axes | None = None,
@@ -44,7 +44,7 @@ def overlay(
     **plot_kwargs,
 ) -> Figure | SubFigure:
     """
-    Visualizes the saliency map on top of the image.
+    Plot saliency map overlaid on an optional image.
 
     Args:
         saliency_map (torch.Tensor): The saliency map to visualize. Shape: [1, 1, H, W]
@@ -60,14 +60,16 @@ def overlay(
     """
     # Resize and normalize saliency map to [0, 1]
     if image is not None:
-        saliency_map = upscale(
-            saliency_map,
+        saliency_map >>= T.Upscale(
             x_size=image.width,
             y_size=image.height,
             mode="bilinear",
         )
-    saliency_map = normalize(saliency_map)
-    saliency_map = saliency_map.squeeze()
+    saliency_map >>= T.normalize()
+
+    # Convert to numpy array for plotting
+    tensor = saliency_map.tensor()  # [1, 1, H, W]
+    map = tensor.squeeze().cpu().numpy()  # [H, W]
 
     # Create fig/ax if needed
     if ax is None:
@@ -81,7 +83,7 @@ def overlay(
 
     # Plot saliency map overlay
     params = {"cmap": "inferno", "alpha": 0.5, **plot_kwargs}
-    im = ax.imshow(saliency_map, **params)
+    im = ax.imshow(map, **params)
 
     if show_colorbar:
         fig.colorbar(im, ax=ax, label="Attention Weight")

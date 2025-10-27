@@ -12,10 +12,9 @@ authors = [
 ]
 license = { file = "LICENSE" }
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.13"
 
 dependencies = [
-    "einops>=0.8.1",
     "matplotlib>=3.10.7",
     "pillow>=12.0.0",
     "scipy>=1.15.3",
@@ -47,7 +46,7 @@ write_to = "src/vl_saliency/_version.py"
 where = ["src"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = "py313"
 line-length = 120
 
 [tool.ruff.lint]
@@ -58,7 +57,7 @@ ignore = ["E501"]                    # let the formatter handle wrapping
 known-first-party = ["vl_saliency"]
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.13"
 files = ["src", "tests"]
 exclude = ["\\.venv", "env", "build", "dist"]
 follow_imports = "skip"  # don't analyze third-party libs

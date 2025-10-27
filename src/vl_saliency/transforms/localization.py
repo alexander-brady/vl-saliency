@@ -4,8 +4,12 @@ import numpy as np
 import torch
 from scipy.ndimage import label
 
+from ..core.map import SaliencyMap
+from ..transforms.layers import SelectHeads
+from .pipe import Chainable
 
-def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[float, np.ndarray, int]:
+
+def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> float:
     """Calculate spatial entropy of an attention map.
 
     Args:
@@ -13,10 +17,7 @@ def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[floa
         threshold: Binarization threshold for connected component analysis.
 
     Returns:
-        result (tuple[float, np.ndarray, int]):
-            - spatial_entropy (float): Entropy value (lower is better, inf if no mass).
-            - labeled_mask (np.ndarray): Labeled connected components.
-            - num_components (int): Number of connected components found.
+        float: The spatial entropy value (lower is better, inf if no mass).
     """
 
     # Emphasize regions significantly above the mean
@@ -30,14 +31,14 @@ def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[floa
     # Ensure there is some attention mass
     total_mass = high_attn.sum().item()
     if total_mass <= 0:
-        return float("inf"), labeled_mask, 0
+        return float("inf")
 
     # Probability mass per component
     probs = [high_attn[labeled_mask == i].sum().item() / total_mass for i in range(1, num_components + 1)]
 
     # Calculate spatial entropy
     se = -sum(p * np.log(p) for p in probs) if probs else 0.0
-    return se, labeled_mask, num_components
+    return se
 
 
 def _elbow_chord(values: list[float]) -> float:
@@ -60,11 +61,7 @@ def _elbow_chord(values: list[float]) -> float:
     # Line from first to last point
     start, end = np.array([x[0], y[0]]), np.array([x[-1], y[-1]])
     line = end - start
-    line_len = np.linalg.norm(line)
-
-    # Handle degenerate case
-    if line_len == 0:
-        return float(y[0])
+    line_len = np.linalg.norm(line)  # Always > 0 since len(values) > 2
 
     # Compute distances from points to line
     unit = line / line_len
@@ -77,46 +74,31 @@ def _elbow_chord(values: list[float]) -> float:
     return float(y[elbow_i])
 
 
-def retrieve_localization_heads(
-    attn: torch.Tensor,
-    patch_size: tuple[int, int],
-    *,
+def identify_localization_heads(
+    map: SaliencyMap,
     chord_thresholding: bool = True,
     min_keep: int = 1,
     max_keep: int | None = 5,
 ) -> list[tuple[int, int]]:
-    """Analyze heads and return a ranked list.
-
-    Args:
-        attn (torch.Tensor): Attention tensor with shape [L, H, P] where
-            L is layers, H is heads, and P is patches.
-        patch_size (tuple[int, int]): Tuple (H, W) indicating the height and width of the patches.
-        chord_thresholding (bool, default=True): Whether to use chord method for thresholding.
-        min_keep (int, default=1): Minimum number of heads to keep in the result.
-        max_keep (int | None, default=5): Maximum number of heads to keep in the result. If None, keep all.
-    Returns:
-        (list[tuple[int, int]]):
-            List of tuples (layer, head) containing analysis
-            results for each head, sorted by spatial entropy (ascending).
-    """
-    layers, heads, _ = attn.shape
+    tensor = map.tensor()
+    head_count = tensor.shape[1]
 
     # Criterion 1: Sum of attention values per head
-    head_attns_sums = [attn[layer, head].sum().item() for layer in range(layers) for head in range(heads)]
-    threshold = _elbow_chord(head_attns_sums) if chord_thresholding else min(head_attns_sums)
+    head_attn_sums = tensor.sum(dim=(-1, -2)).flatten().cpu().numpy().tolist()  # [layers, heads]
+    threshold = _elbow_chord(head_attn_sums) if chord_thresholding else min(head_attn_sums)
 
     # Analyze Criterion 2 only for heads above threshold (by value)
     candidates: list[dict] = []
-    for idx, head_attn_sum in enumerate(head_attns_sums):
+    for idx, head_attn_sum in enumerate(head_attn_sums):
         # Compute layer and head indices
-        layer = idx // heads
-        head = idx % heads
+        layer = idx // head_count
+        head = idx % head_count
 
         # Only analyze spatial entropy if above threshold
         if head_attn_sum >= threshold:
             # Compute spatial entropy
-            attn_map = attn[layer, head].reshape(patch_size)  # [H, W]
-            se, _, _ = _spatial_entropy(attn_map)
+            attn_map = tensor[layer, head]  # [H, W]
+            se = _spatial_entropy(attn_map)
 
             # We want to avoid heads focusing on bottom row
             last_row_attended = (attn_map[-1] > 0.05).any()
@@ -151,4 +133,44 @@ def retrieve_localization_heads(
     if max_keep and max_keep > 0:
         kept = kept[:max_keep]
 
-    return [(res["layer"], res["head"]) for res in kept]
+    if not kept:
+        raise ValueError("No heads were selected by the LocalizationHeads criteria.")
+
+    # Extract selected heads
+    return [(head["layer"], head["head"]) for head in kept]
+
+
+class LocalizationHeads(Chainable):
+    """Analyze heads and return a ranked list.
+
+    Attributes:
+        chord_thresholding (bool, default=True): Whether to use chord method for thresholding.
+        min_keep (int, default=1): Minimum number of heads to keep in the result.
+        max_keep (int | None, default=5): Maximum number of heads to keep in the result. If None, keep all.
+
+    Returns:
+        SaliencyMap: The processed saliency map with selected heads. [1, kept_heads, H, W]
+
+    Raises:
+        ValueError: If no heads are selected by the criteria.
+    """
+
+    def __init__(
+        self,
+        chord_thresholding: bool = True,
+        min_keep: int = 1,
+        max_keep: int | None = 5,
+    ):
+        self.chord_thresholding = chord_thresholding
+        self.min_keep = min_keep
+        self.max_keep = max_keep
+
+    def __call__(self, map: SaliencyMap) -> SaliencyMap:
+        heads_to_select = identify_localization_heads(
+            map,
+            chord_thresholding=self.chord_thresholding,
+            min_keep=self.min_keep,
+            max_keep=self.max_keep,
+        )
+        selector = SelectHeads(heads_to_select)
+        return selector(map)  # shape: [1, kept_heads, H, W]

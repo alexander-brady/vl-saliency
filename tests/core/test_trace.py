@@ -1,102 +1,276 @@
-from contextlib import nullcontext
+import importlib
 
 import pytest
 import torch
 
-from vl_saliency import SaliencyTrace
+from vl_saliency.core.map import SaliencyMap
+from vl_saliency.core.trace import Trace
+from vl_saliency.selectors.base import Selector
+
+trace_module = importlib.import_module("vl_saliency.core.trace")
 
 
-def test_capture_raises_on_batch_size_not_one(dummy_model, dummy_processor):
-    trace = SaliencyTrace(dummy_model, dummy_processor, method="dummy")
-    trace.image_token_id = 99
-    # generated_ids has batch=2 -> should raise
+def create_trace(proc, attn=True, grad=True) -> Trace:
+    return Trace(
+        attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)] if attn else None,
+        grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)] if grad else None,
+        processor=proc,
+        image_token_id=1,
+        gen_start=1,
+        generated_ids=torch.tensor([[5, 6, 7, 8]]),
+    )
+
+
+# ------------------------- Constructor -------------------------
+
+
+def test_constructor(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    assert trace.attn is not None
+    assert trace.grad is not None
+    assert trace.processor is dummy_processor
+    assert trace.image_token_id == 1
+    assert len(trace.attn) == 6
+    assert len(trace.grad) == 6
+    assert trace.gen_start == 1
+    assert trace.generated_ids is not None
+    assert torch.equal(trace.generated_ids, torch.tensor([[5, 6, 7, 8]]))
+
+
+def test_set_default_mode(dummy_processor, monkeypatch, caplog):
+    monkeypatch.setattr(trace_module.logger, "propagate", True)
+    with caplog.at_level("ERROR"):
+        trace = create_trace(dummy_processor, attn=True, grad=True)
+
+    assert trace._default == "attn"
+    assert len(caplog.messages) == 0
+
+    trace_no_attn = create_trace(dummy_processor, attn=False, grad=True)
+    assert trace_no_attn._default == "grad"
+
     with pytest.raises(ValueError):
-        trace.capture(
-            generated_ids=torch.ones(2, 5, dtype=torch.long),
-            input_ids=torch.ones(2, 5, dtype=torch.long),
-            pixel_values=torch.randn(1, 3, 8, 8),
+        create_trace(dummy_processor, attn=False, grad=False)
+
+
+def test_invalid_shapes_constructor(dummy_processor):
+    # Mismatched layers/heads/gen_tokens
+    attn = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 4, 6, 6)]
+    grad = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 3, 6, 6)]
+    with pytest.raises(ValueError):
+        Trace(attn=attn, grad=grad, processor=dummy_processor)
+
+    # Mismatched number of images
+    attn = [torch.randn(2, 2, 3, 6, 6)]
+    grad = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 3, 6, 6)]
+    with pytest.raises(ValueError):
+        Trace(attn=attn, grad=grad, processor=dummy_processor)
+
+    # Mismatched tensor shapes
+    attn = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 3, 6, 6)]
+    grad = [torch.randn(2, 2, 3, 6, 5), torch.randn(2, 2, 3, 6, 6)]
+    with pytest.raises(ValueError):
+        Trace(attn=attn, grad=grad, processor=dummy_processor)
+
+
+def invalid_gen_start(monkeypatch, caplog):
+    monkeypatch.setattr(trace_module.logger, "propagate", True)
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            gen_start=10,
         )
+    assert any("between 0 and total_generated_tokens" in message for message in caplog.messages)
+    caplog.clear()
+
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            gen_start=-1,
+        )
+    assert any("between 0 and total_generated_tokens" in message for message in caplog.messages)
 
 
-@pytest.mark.parametrize(
-    "have_grid,patch_shape,expect_ok",
-    [
-        (True, None, True),  # grid provided
-        (False, None, False),  # neither -> error
-        (False, (5, 1), True),  # only patch_shape -> ok
-        (False, (2, 2), False),  # wrong patch_shape -> error (when true size is 4x4)
-    ],
-)
-def test_capture_patch_shape(dummy_model, dummy_processor, have_grid, patch_shape, expect_ok):
-    trace = SaliencyTrace(dummy_model, dummy_processor, method="dummy")
-    trace.image_token_id = 1
-
-    generated_ids = torch.ones(1, 5, dtype=torch.long)
-    input_ids = torch.ones(1, 5, dtype=torch.long)
-    pixel_values = torch.randn(1, 3, 8, 8)
-
-    kwargs = {}
-    if have_grid:
-        kwargs["image_grid_thw"] = torch.tensor([[1, 10, 2]], dtype=torch.int32)
-    if patch_shape is not None:
-        trace.patch_shape = patch_shape
-
-    ctx = pytest.raises(ValueError) if not expect_ok else nullcontext()
-    with ctx:
-        trace.capture(
+def test_invalid_generated_ids_shape(monkeypatch, caplog):
+    monkeypatch.setattr(trace_module.logger, "propagate", True)
+    # generated_ids not 2D
+    generated_ids = torch.tensor([[[5, 6, 7]]])
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
             generated_ids=generated_ids,
-            input_ids=input_ids,
-            pixel_values=pixel_values,
-            **kwargs,
+            gen_start=0,
         )
+    assert any("2D tensor" in message for message in caplog.messages)
+    caplog.clear()
+
+    # generated_ids not batch size 1
+    generated_ids = torch.tensor([[5, 6, 7], [8, 9, 10]])
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            generated_ids=generated_ids,
+            gen_start=0,
+        )
+    assert any("shape [1, T]" in message for message in caplog.messages)
+    caplog.clear()
+
+    # generated_ids length mismatch
+    generated_ids = torch.tensor([[5, 6]])
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            gen_start=5,
+            generated_ids=generated_ids,
+        )
+        assert any("gen_start + total_generated_tokens" in message for message in caplog.messages)
 
 
-def test_map_raises_without_capture(dummy_model, dummy_processor):
-    trace = SaliencyTrace(dummy_model, dummy_processor, method="dummy")
-    trace.image_token_id = 99
+# ------------------------- Helper Methods -------------------------
+
+
+def test_get_token_index(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    assert trace.gen_start == 1
+
+    # Direct index
+    token_index = trace._get_token_index(1)
+    assert token_index == 1
+
+    # Using Selector
+    class DummySelector(Selector):
+        def __call__(self, trace):
+            return 2
+
+    selector = DummySelector()
+    token_index = trace._get_token_index(selector)
+    assert token_index == 2
+
+
+def test_get_token_index_out_of_range(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+
+    with pytest.raises(IndexError):
+        trace._get_token_index(-1)
+
+    with pytest.raises(IndexError):
+        trace._get_token_index(10)
+
+
+def test_get_tkn2img_map(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    token_index = 2
+    image_index = 1
+
+    attn_map = trace._get_tkn2img_map(token_index, image_index, "attn")
+    grad_map = trace._get_tkn2img_map(token_index, image_index, "grad")
+
+    assert isinstance(attn_map, SaliencyMap)
+    assert attn_map.map.shape == (2, 2, 6, 6)  # [layers, heads, H, W]
+
+    assert isinstance(grad_map, SaliencyMap)
+    assert grad_map.map.shape == (2, 2, 6, 6)  # [layers, heads, H, W]
+
+
+def test_get_tkn2img_map_no_data(dummy_processor):
+    trace_no_attn = create_trace(dummy_processor, attn=False, grad=True)
     with pytest.raises(ValueError):
-        trace.map(token=0)
+        trace_no_attn._get_tkn2img_map(2, 0, "attn")
+
+    trace_no_grad = create_trace(dummy_processor, attn=True, grad=False)
+    with pytest.raises(ValueError):
+        trace_no_grad._get_tkn2img_map(2, 0, "grad")
 
 
-@pytest.mark.parametrize("H,W", [(2, 3)])
-def test_capture_then_map_produces_mask(tiny_model, io_factory, make_trace, H, W):
-    trace = make_trace(tiny_model, method=lambda a, g: a * g)
-    io = io_factory(H=H, W=W)
-    trace.capture(**io.__dict__)
-    sal = trace.map(token=io.generated_ids.shape[1] - 1)
-    assert sal.shape == (1, 1, H, W)
-    assert torch.isfinite(sal).all()
+# ------------------------- Map --------------------------------
 
 
-@pytest.mark.parametrize("H,W", [(2, 3)])
-def test_calls_render_token_ids(monkeypatch, tiny_model, io_factory, make_trace, H, W, dummy_processor):
-    called = {}
-
-    def fake_render_token_ids(**kwargs):
-        called.update(kwargs)
-
-    monkeypatch.setattr("vl_saliency.viz.tokens.render_token_ids", fake_render_token_ids)
-
-    trace = make_trace(tiny_model, method=lambda a, g: a * g)
-    io = io_factory(H=H, W=W)
-    trace.capture(**io.__dict__, visualize_tokens=True)
-
-    assert torch.equal(called["generated_ids"], io.generated_ids)
-    assert called["processor"] == trace.processor
+def test_invalid_image_index_map(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    with pytest.raises(IndexError):
+        trace.map(2, mode="attn", image_index=10)
 
 
-@pytest.mark.parametrize("H,W", [(2, 3)])
-def test_capture_maps_are_equiv(tiny_model, io_factory, make_trace, H, W):
-    trace = make_trace(tiny_model, method="dummy")
-    io = io_factory(H=H, W=W)
-    trace.capture(**io.__dict__)
+def test_map_trace_transform(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
 
-    token = io.generated_ids.shape[1] - 1
-    outs = [
-        trace.map(token=token, method=None),
-        trace.map(token=token, method="dummy"),
-        trace.map(token=token, method=lambda a, g: a * g),
-    ]
-    base = outs[0]
-    for o in outs[1:]:
-        assert torch.allclose(base, o)
+    def dummy_transform(attn: SaliencyMap, grad: SaliencyMap) -> SaliencyMap:
+        combined_tensor = attn.tensor() + grad.tensor()
+        return SaliencyMap(combined_tensor)
+
+    token_index = 2
+    image_index = 0
+
+    result = trace.map(token_index, dummy_transform, image_index=image_index)
+
+    attn_map = trace._get_tkn2img_map(token_index, image_index, "attn")
+    grad_map = trace._get_tkn2img_map(token_index, image_index, "grad")
+    expected_tensor = attn_map.tensor() + grad_map.tensor()
+
+    assert isinstance(result, SaliencyMap)
+    torch.testing.assert_close(result.tensor(), expected_tensor)
+
+
+def test_map_trace_transform_no_tensor(dummy_processor):
+    def dummy_transform(attn: SaliencyMap, grad: SaliencyMap) -> SaliencyMap:
+        combined_tensor = attn.tensor() + grad.tensor()
+        return SaliencyMap(combined_tensor)
+
+    token_index = 2
+    trace = create_trace(dummy_processor, attn=True, grad=False)
+    with pytest.raises(ValueError):
+        trace.map(token_index, dummy_transform, image_index=0)
+
+    trace = create_trace(dummy_processor, attn=False, grad=True)
+    with pytest.raises(ValueError):
+        trace.map(token_index, dummy_transform, image_index=0)
+
+
+def test_map_generation(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    token_index = 1
+    image_index = 1
+
+    attn_map = trace.map(token_index, image_index=image_index)  # default is attn
+    grad_map = trace.map(token_index, image_index=image_index, mode="grad")
+
+    expected_attn_map = trace._get_tkn2img_map(token_index, image_index, "attn")
+    expected_grad_map = trace._get_tkn2img_map(token_index, image_index, "grad")
+
+    assert isinstance(attn_map, SaliencyMap)
+    assert attn_map == expected_attn_map
+
+    assert isinstance(grad_map, SaliencyMap)
+    assert grad_map == expected_grad_map
+
+
+# ------------------------- Visualization -------------------------
+
+
+def test_visualize_tokens(dummy_processor, monkeypatch):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+
+    def dummy_render_token_ids(generated_ids, processor, gen_start, skip_tokens, only_number_generated):
+        assert trace.generated_ids is not None
+        assert torch.equal(generated_ids, trace.generated_ids)
+        assert processor is trace.processor
+        assert gen_start == trace.gen_start
+        assert skip_tokens == trace.image_token_id
+        assert only_number_generated is True
+
+    import vl_saliency.viz.tokens as tokens_viz
+
+    monkeypatch.setattr(tokens_viz, "render_token_ids", dummy_render_token_ids)
+
+    trace.visualize_tokens()
+
+
+@pytest.mark.parametrize("missing_attr", ["processor", "generated_ids"])
+def test_visualize_tokens_missing_attributes(dummy_processor, missing_attr):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    setattr(trace, missing_attr, None)
+
+    with pytest.raises(ValueError):
+        trace.visualize_tokens()
