@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/alexander-brady/vl-saliency/actions/workflows/ci.yml/badge.svg)](https://github.com/alexander-brady/vl-saliency/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/vl-saliency.svg)](https://pypi.org/project/vl-saliency/)
-[![Python](https://img.shields.io/badge/python-≥3.10-purple.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-≥3.11-purple.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/github/license/alexander-brady/vl-saliency.svg)](https://github.com/alexander-brady/vl-saliency/blob/main/LICENSE)
 
 This library provides a simple, model-agnostic interface to compute and visualize text-to-image saliency maps, extending classic methods originally developed for Vision Transformers (ViTs) to modern vision-language architectures. Compatible with any Hugging Face Image-Text-to-Text model, this library makes it easy to interpret vision-language model output. Modular and extensible, novel saliency techniques can be easily integrated.

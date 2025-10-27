@@ -1,5 +1,5 @@
 from .functional import abs, normalize, relu, sigmoid
-from .layers import Aggregate, SelectFirstLayers, SelectHeads, SelectLastLayers, SelectLayers
+from .layers import Aggregate, FirstNLayers, LastNLayers, SelectHeads, SelectLayers
 from .localization import LocalizationHeads
 from .pipe import Chainable, Pipeline, chainable
 from .spatial import Binarize, GaussianSmoothing, Upscale
@@ -17,8 +17,8 @@ __all__ = [
     "Chainable",
     "SelectLayers",
     "SelectHeads",
-    "SelectFirstLayers",
-    "SelectLastLayers",
+    "FirstNLayers",
+    "LastNLayers",
     "Aggregate",
     "LocalizationHeads",
 ]
