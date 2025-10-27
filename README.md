@@ -72,13 +72,13 @@ saliency_map = extractor.capture(**inputs, generated_ids=generated_ids).map(toke
 saliency_map.agg().plot(image, title="Gradient-based Saliency Map")
 ```
 
-Some more advanced saliency methods may require access to both attention weights and gradients. You can apply such methods directly to traces using the `>>` operator or the `apply` method, returning a new saliency map.
+Some more advanced saliency methods may require access to both attention weights and gradients. You can apply such methods directly to traces using the `mode` argument in the `map` method, returning a new saliency map.
 
 ```python
 from vl_saliency.lib import gradcam
 
 # Compute Grad-CAM saliency map
-saliency_map = trace.apply(token=200, transform=gradcam)
+saliency_map = trace.map(token=200, mode=gradcam)
 saliency_map.agg().plot(image, title="Grad-CAM Saliency Map")
 ```
 
@@ -158,7 +158,7 @@ def my_custom_transform(saliency_map: SaliencyMap) -> SaliencyMap:
     return saliency_map
 ```
 
-For methods that require both attention weights and gradients, you can define a transform that processes both and returns a new saliency map. Such transforms are defined under the protocol `TraceTransform` and can be applied directly to `Trace` objects using the `apply` method. They must implement the following signature:
+For methods that require both attention weights and gradients, you can define a transform that processes both and returns a new saliency map. Such transforms are defined under the protocol `TraceTransform` and can be applied directly to `Trace` objects using the `map` method. They must implement the following signature:
 
 ```python
 from vl_saliency import SaliencyMap

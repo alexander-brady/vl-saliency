@@ -1,9 +1,13 @@
+import importlib
+
 import pytest
 import torch
 
 from vl_saliency.core.map import SaliencyMap
 from vl_saliency.core.trace import Trace
 from vl_saliency.selectors.base import Selector
+
+trace_module = importlib.import_module("vl_saliency.core.trace")
 
 
 def create_trace(proc, attn=True, grad=True) -> Trace:
@@ -12,8 +16,8 @@ def create_trace(proc, attn=True, grad=True) -> Trace:
         grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)] if grad else None,
         processor=proc,
         image_token_id=1,
-        gen_start=5,
-        generated_ids=torch.tensor([[5, 6, 7]]),
+        gen_start=1,
+        generated_ids=torch.tensor([[5, 6, 7, 8]]),
     )
 
 
@@ -28,14 +32,18 @@ def test_constructor(dummy_processor):
     assert trace.image_token_id == 1
     assert len(trace.attn) == 6
     assert len(trace.grad) == 6
-    assert trace.gen_start == 5
+    assert trace.gen_start == 1
     assert trace.generated_ids is not None
-    assert torch.equal(trace.generated_ids, torch.tensor([[5, 6, 7]]))
+    assert torch.equal(trace.generated_ids, torch.tensor([[5, 6, 7, 8]]))
 
 
-def test_set_default_mode(dummy_processor):
-    trace = create_trace(dummy_processor, attn=True, grad=True)
+def test_set_default_mode(dummy_processor, monkeypatch, caplog):
+    monkeypatch.setattr(trace_module.logger, "propagate", True)
+    with caplog.at_level("ERROR"):
+        trace = create_trace(dummy_processor, attn=True, grad=True)
+
     assert trace._default == "attn"
+    assert len(caplog.messages) == 0
 
     trace_no_attn = create_trace(dummy_processor, attn=False, grad=True)
     assert trace_no_attn._default == "grad"
@@ -44,25 +52,93 @@ def test_set_default_mode(dummy_processor):
         create_trace(dummy_processor, attn=False, grad=False)
 
 
+def test_invalid_shapes_constructor(dummy_processor):
+    # Mismatched layers/heads/gen_tokens
+    attn = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 4, 6, 6)]
+    grad = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 3, 6, 6)]
+    with pytest.raises(ValueError):
+        Trace(attn=attn, grad=grad, processor=dummy_processor)
+
+    # Mismatched number of images
+    attn = [torch.randn(2, 2, 3, 6, 6)]
+    grad = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 3, 6, 6)]
+    with pytest.raises(ValueError):
+        Trace(attn=attn, grad=grad, processor=dummy_processor)
+
+    # Mismatched tensor shapes
+    attn = [torch.randn(2, 2, 3, 6, 6), torch.randn(2, 2, 3, 6, 6)]
+    grad = [torch.randn(2, 2, 3, 6, 5), torch.randn(2, 2, 3, 6, 6)]
+    with pytest.raises(ValueError):
+        Trace(attn=attn, grad=grad, processor=dummy_processor)
+
+
+def test_invalid_generated_ids_shape(monkeypatch, caplog):
+    monkeypatch.setattr(trace_module.logger, "propagate", True)
+    # generated_ids not 2D
+    generated_ids = torch.tensor([[[5, 6, 7]]])
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            generated_ids=generated_ids,
+            gen_start=0,
+        )
+    assert any("2D tensor" in message for message in caplog.messages)
+    caplog.clear()
+
+    # generated_ids not batch size 1
+    generated_ids = torch.tensor([[5, 6, 7], [8, 9, 10]])
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            generated_ids=generated_ids,
+            gen_start=0,
+        )
+    assert any("shape [1, T]" in message for message in caplog.messages)
+    caplog.clear()
+
+    # generated_ids length mismatch
+    generated_ids = torch.tensor([[5, 6]])
+    with caplog.at_level("ERROR"):
+        Trace(
+            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            gen_start=5,
+            generated_ids=generated_ids,
+        )
+        assert any("gen_start + total_generated_tokens" in message for message in caplog.messages)
+
+
 # ------------------------- Helper Methods -------------------------
 
 
 def test_get_token_index(dummy_processor):
     trace = create_trace(dummy_processor, attn=True, grad=True)
-    assert trace.gen_start == 5
+    assert trace.gen_start == 1
 
     # Direct index
-    token_index = trace._get_token_index(3)
-    assert token_index == 3
+    token_index = trace._get_token_index(1)
+    assert token_index == 1
 
     # Using Selector
     class DummySelector(Selector):
-        def select(self, trace):
+        def __call__(self, trace):
             return 2
 
     selector = DummySelector()
     token_index = trace._get_token_index(selector)
     assert token_index == 2
+
+
+def test_get_token_index_out_of_range(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+
+    with pytest.raises(IndexError):
+        trace._get_token_index(-1)
+
+    with pytest.raises(IndexError):
+        trace._get_token_index(10)
 
 
 def test_get_tkn2img_map(dummy_processor):
@@ -90,10 +166,16 @@ def test_get_tkn2img_map_no_data(dummy_processor):
         trace_no_grad._get_tkn2img_map(2, 0, "grad")
 
 
-# ------------------------- API --------------------------------
+# ------------------------- Map --------------------------------
 
 
-def test_apply_trace_transform(dummy_processor):
+def test_invalid_image_index_map(dummy_processor):
+    trace = create_trace(dummy_processor, attn=True, grad=True)
+    with pytest.raises(IndexError):
+        trace.map(2, mode="attn", image_index=10)
+
+
+def test_map_trace_transform(dummy_processor):
     trace = create_trace(dummy_processor, attn=True, grad=True)
 
     def dummy_transform(attn: SaliencyMap, grad: SaliencyMap) -> SaliencyMap:
@@ -103,7 +185,7 @@ def test_apply_trace_transform(dummy_processor):
     token_index = 2
     image_index = 0
 
-    result = trace.apply(token_index, dummy_transform, image_index=image_index)
+    result = trace.map(token_index, dummy_transform, image_index=image_index)
 
     attn_map = trace._get_tkn2img_map(token_index, image_index, "attn")
     grad_map = trace._get_tkn2img_map(token_index, image_index, "grad")
@@ -113,7 +195,7 @@ def test_apply_trace_transform(dummy_processor):
     torch.testing.assert_close(result.tensor(), expected_tensor)
 
 
-def test_apply_trace_transform_no_tensor(dummy_processor):
+def test_map_trace_transform_no_tensor(dummy_processor):
     def dummy_transform(attn: SaliencyMap, grad: SaliencyMap) -> SaliencyMap:
         combined_tensor = attn.tensor() + grad.tensor()
         return SaliencyMap(combined_tensor)
@@ -121,11 +203,11 @@ def test_apply_trace_transform_no_tensor(dummy_processor):
     token_index = 2
     trace = create_trace(dummy_processor, attn=True, grad=False)
     with pytest.raises(ValueError):
-        trace.apply(token_index, dummy_transform, image_index=0)
+        trace.map(token_index, dummy_transform, image_index=0)
 
     trace = create_trace(dummy_processor, attn=False, grad=True)
     with pytest.raises(ValueError):
-        trace.apply(token_index, dummy_transform, image_index=0)
+        trace.map(token_index, dummy_transform, image_index=0)
 
 
 def test_map_generation(dummy_processor):
@@ -146,6 +228,9 @@ def test_map_generation(dummy_processor):
     assert grad_map == expected_grad_map
 
 
+# ------------------------- Visualization -------------------------
+
+
 def test_visualize_tokens(dummy_processor, monkeypatch):
     trace = create_trace(dummy_processor, attn=True, grad=True)
 
@@ -164,7 +249,7 @@ def test_visualize_tokens(dummy_processor, monkeypatch):
     trace.visualize_tokens()
 
 
-@pytest.mark.parametrize("missing_attr", ["processor", "generated_ids", "gen_start"])
+@pytest.mark.parametrize("missing_attr", ["processor", "generated_ids"])
 def test_visualize_tokens_missing_attributes(dummy_processor, missing_attr):
     trace = create_trace(dummy_processor, attn=True, grad=True)
     setattr(trace, missing_attr, None)

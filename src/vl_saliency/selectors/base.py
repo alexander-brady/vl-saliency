@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     from ..core.trace import Trace
 
 
-class Selector(ABC):
-    """Base class for all selectors."""
+@runtime_checkable
+class Selector(Protocol):
+    """Selector protocol that determines a token index from a Trace."""
 
-    @abstractmethod
-    def select(self, trace: Trace) -> int:
-        pass
+    def __call__(self, trace: Trace) -> int: ...
