@@ -3,9 +3,9 @@ import torch
 
 from vl_saliency.transforms.layers import (
     Aggregate,
-    SelectFirstLayers,
+    FirstNLayers,
+    LastNLayers,
     SelectHeads,
-    SelectLastLayers,
     SelectLayers,
 )
 
@@ -35,14 +35,14 @@ def test_select_heads(smap):
 
 
 def test_select_first_layers(smap):
-    t = SelectFirstLayers(2)
+    t = FirstNLayers(2)
     out = smap >> t
     expected = smap.tensor()[:2]
     assert torch.equal(out.tensor(), expected)
 
 
 def test_select_last_layers(smap):
-    t = SelectLastLayers(2)
+    t = LastNLayers(2)
     out = smap >> t
     expected = smap.tensor()[-2:]
     assert torch.equal(out.tensor(), expected)

@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import torch
 
 from ..core.map import SaliencyMap
 from .pipe import Chainable
 
-type reduction = Literal["mean", "sum", "max", "min", "prod"]
+reduction: TypeAlias = Literal["mean", "sum", "max", "min", "prod"]
 
 
 class SelectLayers(Chainable):
@@ -42,7 +42,7 @@ class SelectHeads(Chainable):
         return SaliencyMap(selected)  # shape: [1, num_selected, H, W]
 
 
-class SelectFirstLayers(Chainable):
+class FirstNLayers(Chainable):
     """Select the first N layers from a map.
     Args:
         n (int): Number of layers to select from the start.
@@ -56,7 +56,7 @@ class SelectFirstLayers(Chainable):
         return SaliencyMap(selected)  # shape: [layers, heads, H, W]
 
 
-class SelectLastLayers(Chainable):
+class LastNLayers(Chainable):
     """Select the last N layers from a map.
     Args:
         n (int): Number of layers to select from the end.
