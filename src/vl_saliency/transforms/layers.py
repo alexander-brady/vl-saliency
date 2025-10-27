@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal, TypeAlias
+from typing import Literal
 
 import torch
 
 from ..core.map import SaliencyMap
 from .pipe import Chainable
 
-reduction: TypeAlias = Literal["mean", "sum", "max", "min", "prod"]
+type reduction = Literal["mean", "sum", "max", "min", "prod"]
 
 
 class SelectLayers(Chainable):
