@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections.abc import Callable
 from functools import wraps
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -22,7 +23,7 @@ class TraceTransform(Protocol):
     def __call__(self, attn: SaliencyMap, grad: SaliencyMap) -> SaliencyMap: ...
 
 
-class Chainable:
+class Chainable(ABC):
     """Mixin that provides `>>` composition."""
 
     def __rshift__(self, other: Chainable) -> Pipeline:
@@ -30,8 +31,8 @@ class Chainable:
             return Pipeline(self, *other.transforms)
         return Pipeline(self, other)
 
-    def __call__(self, map: SaliencyMap) -> SaliencyMap:
-        raise NotImplementedError("Chainable subclasses must implement __call__.")
+    @abstractmethod
+    def __call__(self, map: SaliencyMap) -> SaliencyMap: ...  # To be implemented by subclasses
 
 
 def chainable(fn: Transform) -> Callable[..., Pipeline | SaliencyMap]:
@@ -64,6 +65,9 @@ class Pipeline(Chainable):
 
     def __init__(self, *transforms: Transform):
         self.transforms = list(transforms)
+
+    def __len__(self) -> int:
+        return len(self.transforms)
 
     def __rshift__(self, other: Transform) -> Pipeline:
         if isinstance(other, Pipeline):
