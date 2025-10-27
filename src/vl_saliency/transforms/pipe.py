@@ -34,11 +34,18 @@ class Chainable:
         raise NotImplementedError("Chainable subclasses must implement __call__.")
 
 
-def chainable(fn: Transform) -> Callable[..., Pipeline]:
+def chainable(fn: Transform) -> Callable[..., Pipeline | SaliencyMap]:
     """Decorator to make any function or method chainable with >>."""
 
     @wraps(fn)
-    def wrapper(*args, **kwargs) -> Pipeline:
+    def wrapper(*args, **kwargs) -> Pipeline | SaliencyMap:
+        from ..core.map import SaliencyMap
+
+        # EAGER: fn(smap, ...) if first arg is SaliencyMap
+        if args and isinstance(args[0], SaliencyMap):
+            return fn(*args, **kwargs)
+
+        # LAZY: fn(...) returns Pipeline otherwise
         def transform(map: SaliencyMap) -> SaliencyMap:
             return fn(map, *args, **kwargs)
 
