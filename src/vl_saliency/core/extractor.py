@@ -57,6 +57,7 @@ class SaliencyExtractor:
         input_ids: torch.Tensor,  # [1, T_prompt]
         pixel_values: torch.Tensor,  # [image_count, C, H, W],
         image_grid_thw: torch.Tensor | None = None,  # [image_count, 3]
+        **kwargs,
     ) -> Trace:
         """
         Capture a Trace from a model inference with given inputs.
@@ -77,7 +78,7 @@ class SaliencyExtractor:
             input_ids (torch.Tensor): Tensor of input token IDs (prompt). Shape: [1, T_prompt].
             pixel_values (torch.Tensor): Tensor of input images. Shape: [image_count, C, H, W].
             image_grid_thw (torch.Tensor | None, default=None): Optional tensor specifying the grid size (thw) for each image. Shape: [image_count, 3]. Common in Qwen models.
-
+            **kwargs: Additional keyword arguments from the processor
         Returns:
             Trace: The captured Trace containing attention and gradient data.
 
