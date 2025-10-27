@@ -9,7 +9,7 @@ from ..transforms.layers import SelectHeads
 from .pipe import Chainable
 
 
-def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[float, np.ndarray, int]:
+def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> float:
     """Calculate spatial entropy of an attention map.
 
     Args:
@@ -17,10 +17,7 @@ def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[floa
         threshold: Binarization threshold for connected component analysis.
 
     Returns:
-        result (tuple[float, np.ndarray, int]):
-            - spatial_entropy (float): Entropy value (lower is better, inf if no mass).
-            - labeled_mask (np.ndarray): Labeled connected components.
-            - num_components (int): Number of connected components found.
+        float: The spatial entropy value (lower is better, inf if no mass).
     """
 
     # Emphasize regions significantly above the mean
@@ -34,14 +31,14 @@ def _spatial_entropy(attn: torch.Tensor, threshold: float = 0.001) -> tuple[floa
     # Ensure there is some attention mass
     total_mass = high_attn.sum().item()
     if total_mass <= 0:
-        return float("inf"), labeled_mask, 0
+        return float("inf")
 
     # Probability mass per component
     probs = [high_attn[labeled_mask == i].sum().item() / total_mass for i in range(1, num_components + 1)]
 
     # Calculate spatial entropy
     se = -sum(p * np.log(p) for p in probs) if probs else 0.0
-    return se, labeled_mask, num_components
+    return se
 
 
 def _elbow_chord(values: list[float]) -> float:
@@ -64,11 +61,7 @@ def _elbow_chord(values: list[float]) -> float:
     # Line from first to last point
     start, end = np.array([x[0], y[0]]), np.array([x[-1], y[-1]])
     line = end - start
-    line_len = np.linalg.norm(line)
-
-    # Handle degenerate case
-    if line_len == 0:
-        return float(y[0])
+    line_len = np.linalg.norm(line)  # Always > 0 since len(values) > 2
 
     # Compute distances from points to line
     unit = line / line_len
@@ -78,7 +71,73 @@ def _elbow_chord(values: list[float]) -> float:
 
     # Elbow point is where distance is maximized
     elbow_i = int(np.argmax(d))
-    return float(y[elbow_i])
+    return y[elbow_i]
+
+
+def identify_localization_heads(
+    map: SaliencyMap,
+    chord_thresholding: bool = True,
+    min_keep: int = 1,
+    max_keep: int | None = 5,
+) -> list[tuple[int, int]]:
+    tensor = map.tensor()
+    head_count = tensor.shape[1]
+
+    # Criterion 1: Sum of attention values per head
+    head_attn_sums = tensor.sum(dim=(-1, -2)).flatten().cpu().numpy().tolist()  # [layers, heads]
+    threshold = _elbow_chord(head_attn_sums) if chord_thresholding else min(head_attn_sums)
+
+    # Analyze Criterion 2 only for heads above threshold (by value)
+    candidates: list[dict] = []
+    for idx, head_attn_sum in enumerate(head_attn_sums):
+        # Compute layer and head indices
+        layer = idx // head_count
+        head = idx % head_count
+
+        # Only analyze spatial entropy if above threshold
+        if head_attn_sum >= threshold:
+            # Compute spatial entropy
+            attn_map = tensor[layer, head]  # [H, W]
+            se = _spatial_entropy(attn_map)
+
+            # We want to avoid heads focusing on bottom row
+            last_row_attended = (attn_map[-1] > 0.05).any()
+            if last_row_attended:
+                continue
+
+        else:
+            se = float("inf")
+
+        candidates.append(
+            {
+                "layer": layer,
+                "head": head,
+                "attn_sum": head_attn_sum,
+                "spatial_entropy": se,  # lower is better
+            }
+        )
+
+    # Filter and sort: keep heads above threshold, prefer higher layers
+    kept = [head for head in candidates if np.isfinite(head["spatial_entropy"]) and head["layer"] > 1]
+
+    # Fallback: Ensure minimum number of heads kept by taking top by attention sum
+    if len(kept) < min_keep:
+        rest = [head for head in candidates if not np.isfinite(head["spatial_entropy"]) or head["layer"] <= 1]
+        rest.sort(key=lambda x: x["attn_sum"], reverse=True)
+        kept.extend(rest[: min_keep - len(kept)])
+
+    # Sort by spatial entropy (ascending)
+    kept.sort(key=lambda x: x["spatial_entropy"])
+
+    # Take only up to max_keep heads
+    if max_keep and max_keep > 0:
+        kept = kept[:max_keep]
+
+    if not kept:
+        raise ValueError("No heads were selected by the LocalizationHeads criteria.")
+
+    # Extract selected heads
+    return [(head["layer"], head["head"]) for head in kept]
 
 
 class LocalizationHeads(Chainable):
@@ -107,63 +166,11 @@ class LocalizationHeads(Chainable):
         self.max_keep = max_keep
 
     def __call__(self, map: SaliencyMap) -> SaliencyMap:
-        tensor = map.tensor()
-        head_count = tensor.shape[1]
-
-        # Criterion 1: Sum of attention values per head
-        head_attn_sums = tensor.sum(dim=(-1, -2)).flatten().cpu().numpy().tolist()  # [layers, heads]
-        threshold = _elbow_chord(head_attn_sums) if self.chord_thresholding else min(head_attn_sums)
-
-        # Analyze Criterion 2 only for heads above threshold (by value)
-        candidates: list[dict] = []
-        for idx, head_attn_sum in enumerate(head_attn_sums):
-            # Compute layer and head indices
-            layer = idx // head_count
-            head = idx % head_count
-
-            # Only analyze spatial entropy if above threshold
-            if head_attn_sum >= threshold:
-                # Compute spatial entropy
-                attn_map = tensor[layer, head]  # [H, W]
-                se, _, _ = _spatial_entropy(attn_map)
-
-                # We want to avoid heads focusing on bottom row
-                last_row_attended = (attn_map[-1] > 0.05).any()
-                if last_row_attended:
-                    continue
-
-            else:
-                se = float("inf")
-
-            candidates.append(
-                {
-                    "layer": layer,
-                    "head": head,
-                    "attn_sum": head_attn_sum,
-                    "spatial_entropy": se,  # lower is better
-                }
-            )
-
-        # Filter and sort: keep heads above threshold, prefer higher layers
-        kept = [head for head in candidates if np.isfinite(head["spatial_entropy"]) and head["layer"] > 1]
-
-        # Fallback: Ensure minimum number of heads kept by taking top by attention sum
-        if len(kept) < self.min_keep:
-            rest = [head for head in candidates if not np.isfinite(head["spatial_entropy"]) or head["layer"] <= 1]
-            rest.sort(key=lambda x: x["attn_sum"], reverse=True)
-            kept.extend(rest[: self.min_keep - len(kept)])
-
-        # Sort by spatial entropy (ascending)
-        kept.sort(key=lambda x: x["spatial_entropy"])
-
-        # Take only up to max_keep heads
-        if self.max_keep and self.max_keep > 0:
-            kept = kept[: self.max_keep]
-
-        if not kept:
-            raise ValueError("No heads were selected by the LocalizationHeads criteria.")
-
-        # Extract selected heads
-        heads_to_select = [(head["layer"], head["head"]) for head in kept]
+        heads_to_select = identify_localization_heads(
+            map,
+            chord_thresholding=self.chord_thresholding,
+            min_keep=self.min_keep,
+            max_keep=self.max_keep,
+        )
         selector = SelectHeads(heads_to_select)
-        return selector(map)  # shape: [layers, heads, H, W]
+        return selector(map)  # shape: [1, kept_heads, H, W]
