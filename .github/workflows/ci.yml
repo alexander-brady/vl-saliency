@@ -39,7 +39,7 @@ jobs:
           version: "0.9.5"
           enable-cache: true
       - name: Install the project
-        run: uv sync --locked --all-extras --dev
+        run: uv sync --all-extras --dev
       - name: Run tests
         run: |
           uv run pytest -q --maxfail=1 --disable-warnings \
