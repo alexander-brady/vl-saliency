@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
@@ -8,6 +8,7 @@ from matplotlib.figure import Figure
 from PIL.Image import Image
 
 if TYPE_CHECKING:
+    from ..transforms.layers import reduction
     from ..transforms.pipe import Transform
 
 _ALLOWED_TORCH_FUNCTIONS = frozenset(
@@ -120,8 +121,8 @@ class SaliencyMap:
 
     def agg(
         self,
-        layer_reduce: Literal["mean", "sum", "max", "min", "prod"] | None = "mean",
-        head_reduce: Literal["mean", "sum", "max", "min", "prod"] | None = "mean",
+        layer_reduce: reduction | None = "mean",
+        head_reduce: reduction | None = "mean",
     ) -> SaliencyMap:
         """Aggregate the saliency map along specified dimensions.
 

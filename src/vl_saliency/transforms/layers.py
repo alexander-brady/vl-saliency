@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, TypeAlias
 
 import torch
 
 from ..core.map import SaliencyMap
 from .pipe import Chainable
+
+reduction: TypeAlias = Literal["mean", "sum", "max", "min", "prod"]
 
 
 class SelectLayers(Chainable):
@@ -72,17 +74,17 @@ class Aggregate(Chainable):
     """Aggregate over layers and heads.
 
     Args:
-        layer_reduce (Literal['mean', 'sum', 'max', 'min', 'prod'], default='mean'): Aggregation method to use.
-        head_reduce (Literal['mean', 'sum', 'max', 'min', 'prod'], default='mean'): Aggregation method to use.
+        layer_reduce (Literal['mean', 'sum', 'max', 'min', 'prod'] | None, default='mean'): Aggregation method to use.
+        head_reduce (Literal['mean', 'sum', 'max', 'min', 'prod'] | None, default='mean'): Aggregation method to use.
     """
 
     def __init__(
         self,
-        layer_reduce: Literal["mean", "sum", "max", "min", "prod"] | None = "mean",
-        head_reduce: Literal["mean", "sum", "max", "min", "prod"] | None = "mean",
+        layer_reduce: reduction | None = "mean",
+        head_reduce: reduction | None = "mean",
     ):
-        self.layer_reduce = layer_reduce
-        self.head_reduce = head_reduce
+        self.layer_reduce: reduction | None = layer_reduce
+        self.head_reduce: reduction | None = head_reduce
 
     def __call__(self, map: SaliencyMap) -> SaliencyMap:
         tensor = map.tensor()  # shape: [layers, heads, H, W]
@@ -96,9 +98,7 @@ class Aggregate(Chainable):
         # aggregated shape: [1 or layers, 1 or heads, H, W]
         return SaliencyMap(tensor)
 
-    def _reduce(
-        self, tensor: torch.Tensor, method: Literal["mean", "sum", "max", "min", "prod"], axis: int
-    ) -> torch.Tensor:
+    def _reduce(self, tensor: torch.Tensor, method: reduction, axis: int) -> torch.Tensor:
         match method:
             case "mean":
                 return tensor.mean(dim=axis, keepdim=True)

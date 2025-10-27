@@ -71,7 +71,7 @@ def _elbow_chord(values: list[float]) -> float:
 
     # Elbow point is where distance is maximized
     elbow_i = int(np.argmax(d))
-    return y[elbow_i]
+    return float(y[elbow_i])
 
 
 def identify_localization_heads(

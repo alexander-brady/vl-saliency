@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 from functools import wraps
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, cast, overload, runtime_checkable
 
 if TYPE_CHECKING:
     from ..core.map import SaliencyMap
@@ -23,6 +22,15 @@ class TraceTransform(Protocol):
     def __call__(self, attn: SaliencyMap, grad: SaliencyMap) -> SaliencyMap: ...
 
 
+class ChainableCallable(Protocol):
+    """Defines a callable that can be chained with >> to form a Pipeline or directly called."""
+
+    @overload
+    def __call__(self, map: SaliencyMap, /) -> SaliencyMap: ...
+    @overload
+    def __call__(self) -> Pipeline: ...
+
+
 class Chainable(ABC):
     """Mixin that provides `>>` composition."""
 
@@ -35,24 +43,24 @@ class Chainable(ABC):
     def __call__(self, map: SaliencyMap) -> SaliencyMap: ...  # To be implemented by subclasses
 
 
-def chainable(fn: Transform) -> Callable[..., Pipeline | SaliencyMap]:
+def chainable(fn: Transform) -> ChainableCallable:
     """Decorator to make any function or method chainable with >>."""
 
     @wraps(fn)
-    def wrapper(*args, **kwargs) -> Pipeline | SaliencyMap:
+    def wrapper(*args) -> Pipeline | SaliencyMap:
         from ..core.map import SaliencyMap
 
-        # EAGER: fn(smap, ...) if first arg is SaliencyMap
+        # EAGER: fn(saliency_map) called directly
         if args and isinstance(args[0], SaliencyMap):
-            return fn(*args, **kwargs)
+            return fn(map=args[0])
 
-        # LAZY: fn(...) returns Pipeline otherwise
+        # LAZY: fn return Pipeline otherwise
         def transform(map: SaliencyMap) -> SaliencyMap:
-            return fn(map, *args, **kwargs)
+            return fn(map=map)
 
         return Pipeline(transform)
 
-    return wrapper
+    return cast(ChainableCallable, wrapper)
 
 
 class Pipeline(Chainable):
