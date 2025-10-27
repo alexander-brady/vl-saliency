@@ -81,6 +81,12 @@ class Trace:
         self.gen_start = gen_start
         self.generated_ids = generated_ids
 
+        # Ensure gen_start is valid
+        if not (0 <= self.gen_start <= self.total_generated_tokens):
+            logger.error(
+                f"gen_start ({self.gen_start}) must be between 0 and total_generated_tokens ({self.total_generated_tokens})."
+            )
+
         # Ensure generated_ids is 1D and valid
         if generated_ids is not None:
             if generated_ids.ndim != 2 or generated_ids.size(0) != 1:
@@ -88,7 +94,8 @@ class Trace:
 
             if generated_ids.shape[1] != self.gen_start + self.total_generated_tokens:
                 logger.error(
-                    f"generated_ids length {generated_ids.shape[1]} does not match gen_start + total_generated_tokens ({self.gen_start} + {self.total_generated_tokens} = {self.gen_start + self.total_generated_tokens})."
+                    f"generated_ids length {generated_ids.shape[1]} does not match gen_start + total_generated_tokens"
+                    f"({self.gen_start} + {self.total_generated_tokens} = {self.gen_start + self.total_generated_tokens})."
                 )
 
     def _get_token_index(self, token: int | Selector) -> int:

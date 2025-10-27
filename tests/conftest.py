@@ -2,6 +2,7 @@ import pytest
 import torch
 
 from vl_saliency.core.map import SaliencyMap
+from vl_saliency.core.trace import Trace
 
 
 class DummyTokenizer:
@@ -22,3 +23,13 @@ def dummy_processor():
 def smap() -> SaliencyMap:
     t = torch.arange(0, 16.0).view(1, 1, 4, 4)
     return SaliencyMap(t)
+
+
+@pytest.fixture
+def dummy_trace():
+    return Trace(
+        attn=[torch.randn(4, 4, 3, 6, 6)],
+        grad=[torch.randn(4, 4, 3, 6, 6)],
+        gen_start=2,
+        generated_ids=torch.tensor([[10, 11, 12, 13, 14]]),
+    )
