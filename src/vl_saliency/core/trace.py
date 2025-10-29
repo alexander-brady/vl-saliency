@@ -93,9 +93,10 @@ class Trace:
                 )
 
         # Ensure gen_start is valid
-        if not (0 <= self.gen_start or generated_ids is not None and self.gen_start < generated_ids.shape[1]):
+        max_len = generated_ids.shape[1] if generated_ids is not None else self.total_generated_tokens
+        if not (0 <= self.gen_start < max_len):
             logger.error(
-                f"gen_start ({self.gen_start}) must be between 0 and generated_ids.shape[1] ({generated_ids.shape[1] if generated_ids is not None else 'not provided'})."
+                f"gen_start ({self.gen_start}) must be between 0 and {max_len - 1} (total generated tokens)."
             )
 
     def _get_token_index(self, token: int | Selector) -> int:

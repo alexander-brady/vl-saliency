@@ -72,14 +72,15 @@ def test_invalid_shapes_constructor(dummy_processor):
         Trace(attn=attn, grad=grad, processor=dummy_processor)
 
 
-def invalid_gen_start(monkeypatch, caplog):
+def test_invalid_gen_start(monkeypatch, caplog):
     monkeypatch.setattr(trace_module.logger, "propagate", True)
     with caplog.at_level("ERROR"):
         Trace(
             attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
+            generated_ids=torch.tensor([[5, 6, 7]]),
             gen_start=10,
         )
-    assert any("between 0 and total_generated_tokens" in message for message in caplog.messages)
+    assert any("between 0 and " in message for message in caplog.messages)
     caplog.clear()
 
     with caplog.at_level("ERROR"):
@@ -87,7 +88,7 @@ def invalid_gen_start(monkeypatch, caplog):
             attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
             gen_start=-1,
         )
-    assert any("between 0 and total_generated_tokens" in message for message in caplog.messages)
+    assert any("between 0 and " in message for message in caplog.messages)
 
 
 def test_invalid_generated_ids_shape(monkeypatch, caplog):
