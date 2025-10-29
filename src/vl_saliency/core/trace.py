@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING, Literal
 
 import torch
 
-from ..selectors.base import Selector
 from ..utils.logger import get_logger
 from .map import SaliencyMap
 
 if TYPE_CHECKING:
     from transformers.processing_utils import ProcessorMixin
 
+    from ..selectors.base import Selector
     from ..transforms.pipe import TraceTransform
 
 logger = get_logger(__name__)
@@ -100,7 +100,7 @@ class Trace:
 
     def _get_token_index(self, token: int | Selector) -> int:
         """Select desired token (relative to generated tokens)."""
-        if isinstance(token, Selector):
+        if not isinstance(token, int):  # If token is a Selector
             token = token(self)
 
         if not 0 <= token < self.total_generated_tokens:

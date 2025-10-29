@@ -1,12 +1,5 @@
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
+from ..core.trace import Trace
 from ..utils.logger import get_logger
-
-if TYPE_CHECKING:
-    from ..core.trace import Trace
-
 
 logger = get_logger(__name__)
 
