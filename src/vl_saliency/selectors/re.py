@@ -36,13 +36,13 @@ class ReSelector:
 
         if trace.generated_ids is None:
             raise ValueError("Trace has no generated token IDs.")
-        
+
         # Decode the generated IDs to text
         tok = trace.processor.tokenizer  # type: ignore[attr-defined]
         tokens = tok.convert_ids_to_tokens(trace.generated_ids, skip_special_tokens=False)
 
         # Only consider generated tokens
-        generated_tokens = tokens[trace.gen_start:]
+        generated_tokens = tokens[trace.gen_start :]
 
         # Determine search order based on 'select' attribute
         if self.select == "first":

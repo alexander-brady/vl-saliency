@@ -74,7 +74,7 @@ def test_re_selector_exact_match(dummier_trace):
 
     index = selector(dummier_trace)
     assert index == 1  # Exact match for "Hello" at index 1 of generated tokens
-    
+
     selector = ReSelector(pattern="lo", require_exact_match=True)
     with pytest.raises(ValueError, match="No tokens match the given pattern"):
         selector(dummier_trace)
@@ -85,7 +85,8 @@ def test_re_selector_partial_match(dummier_trace):
 
     index = selector(dummier_trace)
     assert index == 1  # "Hello" contains "lo" at index 1 of generated tokens
-    
+
+
 def test_re_no_match_if_not_generated(dummier_trace):
     selector = ReSelector(pattern="Hello", require_exact_match=False)
 
