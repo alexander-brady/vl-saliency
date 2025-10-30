@@ -32,20 +32,10 @@ class ReSelector:
 
     def __call__(self, trace: Trace) -> int:
         if trace.processor is None:
-            raise ValueError("Trace has no processor to provide text.")
-
-        # Get the generated token IDs
-        if trace.generated_ids is None:
-            raise ValueError("Trace has no generated token IDs.")
-        elif trace.generated_ids.dim() == 2:
-            token_ids = trace.generated_ids[0].tolist()
-        elif trace.generated_ids.dim() == 1:
-            token_ids = trace.generated_ids.tolist()
-        else:
-            raise ValueError("generated_ids must be a 1D or 2D tensor.")
+            raise ValueError("Trace has no processor to select from.")
 
         # Only consider generated tokens
-        token_ids = token_ids[trace.gen_start :]
+        token_ids = trace.token_ids[trace.gen_start :]
 
         # Decode the generated IDs to text
         tok = trace.processor.tokenizer  # type: ignore[attr-defined]

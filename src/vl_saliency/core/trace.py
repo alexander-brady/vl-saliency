@@ -26,7 +26,7 @@ class Trace:
         processor (ProcessorMixin | None, default=None): The processor used for tokenization and decoding.
         image_token_id (int | None, default=None): The token ID used to represent image tokens.
         gen_start (int, default=0): The starting index of generated tokens in the sequence.
-        generated_ids (torch.Tensor | None, default=None): The tensor of generated token IDs during inference.
+        token_ids (list[int] | None, default=None): The list of token IDs, including both prompt and generated tokens.
 
     Methods:
         map(token, image_index, mode) -> SaliencyMap: Generate a SaliencyMap for a specific token using stored data.
@@ -41,7 +41,7 @@ class Trace:
         processor: ProcessorMixin | None = None,
         image_token_id: int | None = None,
         gen_start: int = 0,
-        generated_ids: torch.Tensor | None = None,
+        token_ids: list[int] | None = None,
     ):
         # Validate attn and grad shapes
         for attr_name, attr in [("attn", attn), ("grad", grad)]:
@@ -71,31 +71,20 @@ class Trace:
         # Store metadata
         default = getattr(self, self._default)
         self.total_images = len(default)
-        self.total_generated_tokens = default[0].shape[2]
+        self.total_generated_tokens = default[0].shape[2] if default else 0
 
         # Processor info
         self.processor = processor
         self.image_token_id = image_token_id
 
-        # Generation info (for visualization only)
+        # Generation info (for visualization / selection)
         self.gen_start = gen_start
-        self.generated_ids = generated_ids
+        self.token_ids = token_ids or []
 
-        # Ensure generated_ids is 1D and valid
-        if generated_ids is not None:
-            if generated_ids.ndim != 2 or generated_ids.size(0) != 1:
-                logger.error("generated_ids must be a 2D tensor of token IDs with shape [1, T].")
-
-            if generated_ids.shape[1] != self.gen_start + self.total_generated_tokens:
-                logger.error(
-                    f"generated_ids length {generated_ids.shape[1]} does not match gen_start + total_generated_tokens"
-                    f"({self.gen_start} + {self.total_generated_tokens} = {self.gen_start + self.total_generated_tokens})."
-                )
-
-        # Ensure gen_start is valid
-        max_len = generated_ids.shape[1] if generated_ids is not None else self.total_generated_tokens
-        if not (0 <= self.gen_start < max_len):
-            logger.error(f"gen_start ({self.gen_start}) must be between 0 and {max_len - 1} (total generated tokens).")
+        if not (0 <= self.gen_start < len(self.token_ids)):
+            logger.error(
+                f"gen_start ({self.gen_start}) must be between 0 and {len(self.token_ids) - 1} (total token_ids count)."
+            )
 
     def _get_token_index(self, token: int | Selector) -> int:
         """Select desired token (relative to generated tokens)."""
@@ -163,16 +152,16 @@ class Trace:
         Visualize the generated tokens using the processor.
 
         Raises:
-            ValueError: If the processor, generated_ids, or gen_start is not set.
+            ValueError: If the processor is not set.
         """
-        if self.processor is None or self.generated_ids is None:
-            raise ValueError("Processor and generated_ids must be set to visualize tokens.")
+        if self.processor is None:
+            raise ValueError("Processor must be set to visualize tokens.")
 
         from ..viz.tokens import render_token_ids
 
         # Render the token IDs using the processor
         render_token_ids(
-            generated_ids=self.generated_ids,
+            token_ids=self.token_ids,
             processor=self.processor,
             gen_start=self.gen_start,
             skip_tokens=self.image_token_id,

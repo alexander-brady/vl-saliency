@@ -2,7 +2,6 @@ import html
 from collections.abc import Sequence
 from typing import Literal, overload
 
-import torch
 from transformers import ProcessorMixin
 
 try:
@@ -16,7 +15,7 @@ _NEWLINE_MARKERS = {"\n", "\\n", "Ċ", "▁\n"}
 
 @overload
 def render_token_ids(
-    generated_ids: torch.Tensor,
+    token_ids: list[int],
     processor: ProcessorMixin,
     return_html: Literal[True],
     gen_start: int = ...,
@@ -25,7 +24,7 @@ def render_token_ids(
 ) -> str: ...
 @overload
 def render_token_ids(
-    generated_ids: torch.Tensor,
+    token_ids: list[int],
     processor: ProcessorMixin,
     return_html: Literal[False] = ...,
     gen_start: int = ...,
@@ -35,7 +34,7 @@ def render_token_ids(
 
 
 def render_token_ids(
-    generated_ids: torch.Tensor,
+    token_ids: list[int],
     processor: ProcessorMixin,
     return_html: bool = False,
     gen_start: int = 0,
@@ -46,7 +45,7 @@ def render_token_ids(
     Visualizes the generated text from the model.
 
     Args:
-        generated_ids (torch.Tensor): The generated token IDs.
+        token_ids (list[int]): The generated token IDs.
         processor (ProcessorMixin): The processor used to process input.
         gen_start (int): Index from which tokens are considered generated.
         skip_tokens (Optional[Union[int, List[int]]] = None): Token IDs to skip in the visualization.
@@ -56,12 +55,6 @@ def render_token_ids(
     Returns:
         HTML string if return_html=True, else None.
     """
-    if generated_ids.dim() == 2:
-        token_ids = generated_ids[0].tolist()
-    elif generated_ids.dim() == 1:
-        token_ids = generated_ids.tolist()
-    else:
-        raise ValueError("generated_ids must be a 1D or 2D tensor.")
 
     tok = processor.tokenizer  # type: ignore[attr-defined]
     tokens = tok.convert_ids_to_tokens(token_ids, skip_special_tokens=False)

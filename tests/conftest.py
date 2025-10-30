@@ -31,5 +31,5 @@ def dummy_trace():
         attn=[torch.randn(4, 4, 3, 6, 6)],
         grad=[torch.randn(4, 4, 3, 6, 6)],
         gen_start=2,
-        generated_ids=torch.tensor([[10, 11, 12, 13, 14]]),
+        token_ids=[10, 11, 12, 13, 14],
     )

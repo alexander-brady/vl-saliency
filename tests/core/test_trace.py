@@ -17,7 +17,7 @@ def create_trace(proc, attn=True, grad=True) -> Trace:
         processor=proc,
         image_token_id=1,
         gen_start=1,
-        generated_ids=torch.tensor([[5, 6, 7, 8]]),
+        token_ids=[5, 6, 7, 8],
     )
 
 
@@ -33,8 +33,7 @@ def test_constructor(dummy_processor):
     assert len(trace.attn) == 6
     assert len(trace.grad) == 6
     assert trace.gen_start == 1
-    assert trace.generated_ids is not None
-    assert torch.equal(trace.generated_ids, torch.tensor([[5, 6, 7, 8]]))
+    assert trace.token_ids == [5, 6, 7, 8]
 
 
 def test_set_default_mode(dummy_processor, monkeypatch, caplog):
@@ -77,7 +76,7 @@ def test_invalid_gen_start(monkeypatch, caplog):
     with caplog.at_level("ERROR"):
         Trace(
             attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            generated_ids=torch.tensor([[5, 6, 7]]),
+            token_ids=[5, 6, 7, 8],
             gen_start=10,
         )
     assert any("between 0 and " in message for message in caplog.messages)
@@ -89,44 +88,6 @@ def test_invalid_gen_start(monkeypatch, caplog):
             gen_start=-1,
         )
     assert any("between 0 and " in message for message in caplog.messages)
-
-
-def test_invalid_generated_ids_shape(monkeypatch, caplog):
-    monkeypatch.setattr(trace_module.logger, "propagate", True)
-    # generated_ids not 2D
-    generated_ids = torch.tensor([[[5, 6, 7]]])
-    with caplog.at_level("ERROR"):
-        Trace(
-            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            generated_ids=generated_ids,
-            gen_start=0,
-        )
-    assert any("2D tensor" in message for message in caplog.messages)
-    caplog.clear()
-
-    # generated_ids not batch size 1
-    generated_ids = torch.tensor([[5, 6, 7], [8, 9, 10]])
-    with caplog.at_level("ERROR"):
-        Trace(
-            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            generated_ids=generated_ids,
-            gen_start=0,
-        )
-    assert any("shape [1, T]" in message for message in caplog.messages)
-    caplog.clear()
-
-    # generated_ids length mismatch
-    generated_ids = torch.tensor([[5, 6]])
-    with caplog.at_level("ERROR"):
-        Trace(
-            attn=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            grad=[torch.randn(2, 2, 3, 6, 6) for _ in range(6)],
-            gen_start=5,
-            generated_ids=generated_ids,
-        )
-        assert any("gen_start + total_generated_tokens" in message for message in caplog.messages)
 
 
 # ------------------------- Helper Methods -------------------------
@@ -253,9 +214,8 @@ def test_map_generation(dummy_processor):
 def test_visualize_tokens(dummy_processor, monkeypatch):
     trace = create_trace(dummy_processor, attn=True, grad=True)
 
-    def dummy_render_token_ids(generated_ids, processor, gen_start, skip_tokens, only_number_generated):
-        assert trace.generated_ids is not None
-        assert torch.equal(generated_ids, trace.generated_ids)
+    def dummy_render_token_ids(token_ids, processor, gen_start, skip_tokens, only_number_generated):
+        assert trace.token_ids == token_ids
         assert processor is trace.processor
         assert gen_start == trace.gen_start
         assert skip_tokens == trace.image_token_id
@@ -268,10 +228,9 @@ def test_visualize_tokens(dummy_processor, monkeypatch):
     trace.visualize_tokens()
 
 
-@pytest.mark.parametrize("missing_attr", ["processor", "generated_ids"])
-def test_visualize_tokens_missing_attributes(dummy_processor, missing_attr):
-    trace = create_trace(dummy_processor, attn=True, grad=True)
-    setattr(trace, missing_attr, None)
+def test_visualize_tokens_missing_processor():
+    trace = create_trace(None, attn=True, grad=True)
+    assert trace.processor is None
 
     with pytest.raises(ValueError):
         trace.visualize_tokens()

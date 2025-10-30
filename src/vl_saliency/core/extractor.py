@@ -198,11 +198,12 @@ class SaliencyExtractor:
             collect_text2img(indices, grad, H, W, text2img_grad)
 
         # Construct and return Trace
+        token_ids = generated_ids[0].tolist()
         return Trace(
             attn=text2img_attn,
             grad=text2img_grad,
             processor=self.processor,
             image_token_id=self.image_token_id,
             gen_start=gen_start,
-            generated_ids=generated_ids.detach().cpu(),
+            token_ids=token_ids,
         )

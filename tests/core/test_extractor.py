@@ -176,8 +176,7 @@ def test_attn_only_returns_expected_shapes(dummy_model, dummy_processor, monkeyp
     assert trace.image_token_id == 99
     assert trace.gen_start == inp.shape[1]
     assert trace.processor == dummy_processor
-    assert trace.generated_ids is not None
-    assert torch.equal(trace.generated_ids, gen.cpu())
+    assert trace.token_ids == gen[0].tolist()
 
 
 def test_grad_only_returns_expected_shapes(dummy_model, dummy_processor, monkeypatched_utils):

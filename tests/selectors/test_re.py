@@ -22,7 +22,7 @@ def dummier_trace(dummy_trace, dummy_processor):
     dummy_processor.tokenizer = DummyTokenizer()
     dummy_trace.processor = dummy_processor
     dummy_trace.gen_start = 0
-    dummy_trace.generated_ids = torch.tensor([[0, 1, 2, 3, 4]])  # [CLS] Hello world ! [SEP]
+    dummy_trace.token_ids = [0, 1, 2, 3, 4]  # [CLS] Hello world ! [SEP]
     return dummy_trace
 
 
@@ -37,24 +37,11 @@ def test_re_selector_no_processor(dummy_trace):
         selector(dummy_trace)
 
 
-def test_re_selector_invalid_generated_ids(dummier_trace):
-    selector = ReSelector(pattern="Hello")
-
-    dummier_trace.generated_ids = None  # Simulate missing generated IDs
-    with pytest.raises(ValueError, match="no generated token IDs"):
-        selector(dummier_trace)
-
-    dummier_trace.generated_ids = torch.tensor([[[0, 1], [2, 3]]])  # Invalid shape
-    with pytest.raises(ValueError, match="generated_ids must be a 1D or 2D tensor"):
-        selector(dummier_trace)
-
-
 # ---------------------------- Functionality Tests ----------------------------
 
 
 def test_re_selector_first_match(dummier_trace):
     selector = ReSelector(pattern="Hello", select="first", require_exact_match=False)
-
     index = selector(dummier_trace)
     assert index == 1  # "Hello" is at index 1 of generated tokens
 
