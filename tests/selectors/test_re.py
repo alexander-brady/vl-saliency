@@ -13,7 +13,7 @@ class DummyTokenizer:
             3: "!",
             4: "[SEP]",
         }
-        
+
         return [token_map.get(i, "[UNK]") for i in ids]
 
 
