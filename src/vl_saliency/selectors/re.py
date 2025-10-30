@@ -34,26 +34,32 @@ class ReSelector:
         if trace.processor is None:
             raise ValueError("Trace has no processor to provide text.")
 
+        # Get the generated token IDs
         if trace.generated_ids is None:
             raise ValueError("Trace has no generated token IDs.")
+        elif trace.generated_ids.dim() == 2:
+            token_ids = trace.generated_ids[0].tolist()
+        elif trace.generated_ids.dim() == 1:
+            token_ids = trace.generated_ids.tolist()
+        else:
+            raise ValueError("generated_ids must be a 1D or 2D tensor.")
+
+        # Only consider generated tokens
+        token_ids = token_ids[trace.gen_start :]
 
         # Decode the generated IDs to text
         tok = trace.processor.tokenizer  # type: ignore[attr-defined]
-        tokens = tok.convert_ids_to_tokens(trace.generated_ids, skip_special_tokens=False)
-
-        # Only consider generated tokens
-        generated_tokens = tokens[trace.gen_start :]
+        tokens = tok.convert_ids_to_tokens(token_ids, skip_special_tokens=False)
 
         # Determine search order based on 'select' attribute
         if self.select == "first":
-            search_range = range(len(generated_tokens))
+            search_range = range(len(tokens))
         else:  # self.select == "last"
-            search_range = range(len(generated_tokens) - 1, -1, -1)
-        print(tokens, generated_tokens)
+            search_range = range(len(tokens) - 1, -1, -1)
 
         # Find the indices of matching tokens
         for i in search_range:
-            token = generated_tokens[i]
+            token = tokens[i]
             if self.pattern.search(token):
                 return i
 

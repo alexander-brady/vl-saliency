@@ -13,8 +13,8 @@ class DummyTokenizer:
             3: "!",
             4: "[SEP]",
         }
-
-        return [token_map.get(i, "[UNK]") for i in ids.tolist()[0]]
+        
+        return [token_map.get(i, "[UNK]") for i in ids]
 
 
 @pytest.fixture
@@ -37,11 +37,15 @@ def test_re_selector_no_processor(dummy_trace):
         selector(dummy_trace)
 
 
-def test_re_selector_no_generated_ids(dummier_trace):
+def test_re_selector_invalid_generated_ids(dummier_trace):
     selector = ReSelector(pattern="Hello")
 
     dummier_trace.generated_ids = None  # Simulate missing generated IDs
     with pytest.raises(ValueError, match="no generated token IDs"):
+        selector(dummier_trace)
+
+    dummier_trace.generated_ids = torch.tensor([[[0, 1], [2, 3]]])  # Invalid shape
+    with pytest.raises(ValueError, match="generated_ids must be a 1D or 2D tensor"):
         selector(dummier_trace)
 
 
@@ -93,3 +97,16 @@ def test_re_no_match_if_not_generated(dummier_trace):
     dummier_trace.gen_start = 2  # Only consider tokens from index 2 onwards
     with pytest.raises(ValueError, match="No tokens match the given pattern"):
         selector(dummier_trace)
+
+
+def test_re_generated_id_shapes(dummier_trace):
+    # Test with 1D generated_ids
+    dummier_trace.generated_ids = torch.tensor([0, 1, 2, 3, 4])  # [CLS] Hello world ! [SEP]
+    selector = ReSelector(pattern="world", require_exact_match=False)
+    index = selector(dummier_trace)
+    assert index == 2  # "world" is at index 2 of generated tokens
+
+    # Test with 2D generated_ids
+    dummier_trace.generated_ids = torch.tensor([[0, 1, 2, 3, 4]])  # [CLS] Hello world ! [SEP]
+    index = selector(dummier_trace)
+    assert index == 2  # "world" is at index 2 of generated tokens
