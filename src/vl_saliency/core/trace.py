@@ -81,9 +81,10 @@ class Trace:
         self.gen_start = gen_start
         self.token_ids = token_ids or []
 
+        # Validate gen_start
         if not (0 <= self.gen_start < len(self.token_ids)):
             logger.error(
-                f"gen_start ({self.gen_start}) must be between 0 and {len(self.token_ids) - 1} (total token_ids count)."
+                f"gen_start ({self.gen_start}) must be between 0 and {len(self.token_ids)} (total token_ids count, exclusive)."
             )
 
     def _get_token_index(self, token: int | Selector) -> int:
@@ -98,11 +99,12 @@ class Trace:
     def _get_tkn2img_map(self, token: int, image_index: int, mode: Literal["attn", "grad"]) -> SaliencyMap:
         """Get text-to-image saliency map."""
 
+        # Ensure data is available
         if getattr(self, mode) is None:
             raise ValueError(f"No {mode} data stored in this trace.")
-        tkn2img_map = getattr(self, mode)[image_index]  # [layers, heads, gen_tokens, img_tokens, img_tokens]
 
         # Extract the token-to-image map
+        tkn2img_map = getattr(self, mode)[image_index]  # [layers, heads, gen_tokens, img_tokens, img_tokens]
         tkn2img_map = tkn2img_map[:, :, token, :, :]  # [layers, heads, H, W]
         return SaliencyMap(tkn2img_map)
 
@@ -132,9 +134,7 @@ class Trace:
 
         token = self._get_token_index(token)
 
-        if mode is None:
-            mode = self._default
-
+        mode = mode or self._default
         if isinstance(mode, str):
             return self._get_tkn2img_map(token, image_index, mode)
 
