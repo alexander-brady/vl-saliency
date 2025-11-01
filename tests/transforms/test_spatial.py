@@ -1,5 +1,6 @@
 import pytest
 import torch
+from torch.nn.functional import interpolate
 
 from vl_saliency.transforms.spatial import Binarize, GaussianSmoothing, Upscale
 
@@ -65,8 +66,6 @@ def test_upscale(smap):
     upscaler = Upscale(64, 64)
     upscaled_map = smap >> upscaler
 
-    from torch.nn.functional import interpolate
-
     tensor = smap.tensor()
     expected_upscaled = interpolate(tensor, size=(64, 64), mode="bilinear", align_corners=False)
 
@@ -81,3 +80,18 @@ def test_upscale_invalid_input(smap):
     with pytest.raises(ValueError):
         Upscale(64, 64)
         smap.apply(Upscale(64, 64))
+
+
+def test_upscale_height_width(smap):
+    smap = smap.agg()  # Ensure smap is 2D [1, 1, H, W]
+
+    target_height = 80
+    target_width = 120
+    upscaler = Upscale(width=target_width, height=target_height)
+    upscaled_map = smap >> upscaler
+
+    tensor = smap.tensor()
+    expected_upscaled = interpolate(tensor, size=(target_height, target_width), mode="bilinear", align_corners=False)
+
+    assert torch.allclose(upscaled_map.tensor(), expected_upscaled, atol=1e-6)
+    assert upscaled_map.tensor().shape == (1, 1, target_height, target_width)
