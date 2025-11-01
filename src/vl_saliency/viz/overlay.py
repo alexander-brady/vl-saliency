@@ -61,8 +61,8 @@ def overlay(
     # Resize and normalize saliency map to [0, 1]
     if image is not None:
         saliency_map >>= T.Upscale(
-            x_size=image.width,
-            y_size=image.height,
+            height=image.height,
+            width=image.width,
             mode="bilinear",
         )
     saliency_map >>= T.normalize()

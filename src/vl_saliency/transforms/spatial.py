@@ -56,17 +56,17 @@ class GaussianSmoothing(Chainable):
 
 
 class Upscale(Chainable):
-    """Upscale a saliency map to a specified size. Must be applied to maps of shape [1, 1, H, W].
+    """Upscale a saliency map to a specified size. [1, 1, H, W] -> [1, 1, height, width]
 
     Attributes:
-        x_size (int): Target width for upscaling.
-        y_size (int): Target height for upscaling.
+        height (int): Target height for upscaling.
+        width (int): Target width for upscaling.
         mode (str, default="bilinear"): Interpolation mode for upscaling.
     """
 
-    def __init__(self, x_size: int, y_size: int, mode: str = "bilinear"):
-        self.x_size = x_size
-        self.y_size = y_size
+    def __init__(self, width: int, height: int, mode: str = "bilinear"):
+        self.height = height
+        self.width = width
         self.mode = mode
 
     def __call__(self, map: SaliencyMap) -> SaliencyMap:
@@ -77,7 +77,7 @@ class Upscale(Chainable):
             raise ValueError("Input map must be a [1, 1, H, W] tensor.")
 
         upscaled_tensor = torch.nn.functional.interpolate(
-            tensor, size=(self.y_size, self.x_size), mode=self.mode, align_corners=False
+            tensor, size=(self.height, self.width), mode=self.mode, align_corners=False
         )
 
         return SaliencyMap(upscaled_tensor)
