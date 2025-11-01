@@ -64,7 +64,7 @@ class Upscale(Chainable):
         mode (str, default="bilinear"): Interpolation mode for upscaling.
     """
 
-    def __init__(self, width: int, height: int, mode: str = "bilinear"):
+    def __init__(self, height: int, width: int, mode: str = "bilinear"):
         self.height = height
         self.width = width
         self.mode = mode
