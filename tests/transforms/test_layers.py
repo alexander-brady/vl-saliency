@@ -33,6 +33,14 @@ def test_select_heads(smap):
     ].unsqueeze(0)  # add layer dim back
     assert torch.equal(out.tensor(), expected)
 
+    t = SelectHeads((1, 0))
+    out = smap >> t
+    expected = smap.tensor()[
+        [1],
+        [0],
+    ].unsqueeze(0)  # add layer dim back
+    assert torch.equal(out.tensor(), expected)
+
 
 def test_select_first_layers(smap):
     t = FirstNLayers(2)

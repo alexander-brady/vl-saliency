@@ -28,11 +28,11 @@ class SelectHeads(Chainable):
     """Select specific heads from a map.
 
     Args:
-        heads (list[(int, int)]): List of (layer_index, head_index) tuples to select.
+        heads (list[(int, int)] | int): List of (layer_index, head_index) tuples to select.
     """
 
-    def __init__(self, heads: list[tuple[int, int]]):
-        self.heads = heads
+    def __init__(self, heads: list[tuple[int, int]] | int):
+        self.heads = heads if isinstance(heads, list) else [heads]
 
     def __call__(self, map: SaliencyMap) -> SaliencyMap:
         layer_idx = [l_idx for l_idx, _ in self.heads]
