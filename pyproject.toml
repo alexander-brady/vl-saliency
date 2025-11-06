@@ -19,7 +19,6 @@ dependencies = [
     "pillow>=12.0.0",
     "scipy>=1.15.3",
     "torch>=2.8.0",
-    "transformers>=4.57.1",
 ]
 
 [dependency-groups]
@@ -29,6 +28,7 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.0",
+    "transformers>=4.57.1",
 ]
 
 [project.urls]

@@ -5,11 +5,10 @@ from typing import TYPE_CHECKING, Literal
 import torch
 
 from ..utils.logger import get_logger
+from ._types import Processor
 from .map import SaliencyMap
 
 if TYPE_CHECKING:
-    from transformers.processing_utils import ProcessorMixin
-
     from ..selectors.base import Selector
     from ..transforms.pipe import TraceTransform
 
@@ -23,7 +22,7 @@ class Trace:
     Attributes:
         attn (list[torch.Tensor] | None): List of attention tensors per image. Each tensor has shape [layers, heads, gen_tokens, img_tokens, img_tokens] or None if attention was not captured.
         grad (list[torch.Tensor] | None, default=None): List of gradient tensors per image. Each tensor has shape [layers, heads, gen_tokens, img_tokens, img_tokens] or None if gradients were not captured.
-        processor (ProcessorMixin | None, default=None): The processor used for tokenization and decoding.
+        processor (Processor | None, default=None): The processor used for tokenization and decoding.
         image_token_id (int | None, default=None): The token ID used to represent image tokens.
         gen_start (int, default=0): The starting index of generated tokens in the sequence.
         token_ids (list[int] | None, default=None): The list of token IDs, including both prompt and generated tokens.
@@ -38,7 +37,7 @@ class Trace:
         attn: list[torch.Tensor] | None,
         grad: list[torch.Tensor] | None = None,
         *,
-        processor: ProcessorMixin | None = None,
+        processor: Processor | None = None,
         image_token_id: int | None = None,
         gen_start: int = 0,
         token_ids: list[int] | None = None,

@@ -1,9 +1,8 @@
 import torch
-from transformers.modeling_utils import PreTrainedModel
-from transformers.processing_utils import ProcessorMixin
 
 from ..utils.logger import get_logger
 from ..utils.transformer_utils import _get_image_token_id, _get_vision_patch_shape, _image_patch_shapes
+from ._types import Processor, VLModel
 from .trace import Trace
 
 logger = get_logger(__name__)
@@ -14,8 +13,8 @@ class SaliencyExtractor:
     Engine to capture attention and gradient data from a vision-language model during inference.
 
     Attributes:
-        model (PreTrainedModel): The vision-language model to trace.
-        processor (ProcessorMixin): The processor for tokenization and decoding.
+        model (VLModel): The vision-language model to trace.
+        processor (Processor): The processor for tokenization and decoding.
         store_grads (bool, default=True): Whether to store gradients during tracing.
         store_attns (bool, default=True): Whether to store attention weights during tracing.
 
@@ -25,8 +24,8 @@ class SaliencyExtractor:
 
     def __init__(
         self,
-        model: PreTrainedModel,
-        processor: ProcessorMixin,
+        model: VLModel,
+        processor: Processor,
         store_attns: bool = True,
         store_grads: bool = True,
     ):
@@ -170,7 +169,7 @@ class SaliencyExtractor:
             outputs.loss.backward()
 
             grad = torch.cat(
-                [a.grad.detach().cpu() for a in attn_matrices], dim=0
+                [a.grad.detach().cpu() for a in attn_matrices], dim=0  # type: ignore[union-attr]
             )  # [num_layers, heads, tokens, tokens]
             grad = grad[:, :, gen_start:, :]  # Keep only generated tokens
 

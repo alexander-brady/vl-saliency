@@ -2,7 +2,7 @@ import html
 from collections.abc import Sequence
 from typing import Literal, overload
 
-from transformers import ProcessorMixin
+from ..core._types import Processor
 
 try:
     from IPython.display import HTML, display  # optional
@@ -16,7 +16,7 @@ _NEWLINE_MARKERS = {"\n", "\\n", "Ċ", "▁\n"}
 @overload
 def render_token_ids(
     token_ids: list[int],
-    processor: ProcessorMixin,
+    processor: Processor,
     return_html: Literal[True],
     gen_start: int = ...,
     skip_tokens: int | Sequence[int] | None = ...,
@@ -25,7 +25,7 @@ def render_token_ids(
 @overload
 def render_token_ids(
     token_ids: list[int],
-    processor: ProcessorMixin,
+    processor: Processor,
     return_html: Literal[False] = ...,
     gen_start: int = ...,
     skip_tokens: int | Sequence[int] | None = ...,
@@ -35,7 +35,7 @@ def render_token_ids(
 
 def render_token_ids(
     token_ids: list[int],
-    processor: ProcessorMixin,
+    processor: Processor,
     return_html: bool = False,
     gen_start: int = 0,
     skip_tokens: int | Sequence[int] | None = None,
@@ -46,7 +46,7 @@ def render_token_ids(
 
     Args:
         token_ids (list[int]): The generated token IDs.
-        processor (ProcessorMixin): The processor used to process input.
+        processor (Processor): The processor used to process input.
         gen_start (int): Index from which tokens are considered generated.
         skip_tokens (Optional[Union[int, List[int]]] = None): Token IDs to skip in the visualization.
         return_html (bool): If True, return the HTML string; otherwise display (if IPython available).
@@ -56,7 +56,7 @@ def render_token_ids(
         HTML string if return_html=True, else None.
     """
 
-    tok = processor.tokenizer  # type: ignore[attr-defined]
+    tok = processor.tokenizer
     tokens = tok.convert_ids_to_tokens(token_ids, skip_special_tokens=False)
 
     skip_set = {skip_tokens} if isinstance(skip_tokens, int) else set(skip_tokens or [])
