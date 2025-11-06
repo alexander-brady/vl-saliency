@@ -49,7 +49,7 @@ class SaliencyExtractor:
 
     def capture(
         self,
-        generated_ids: torch.Tensor,  # [1, T_gen]
+        generated_ids: torch.Tensor | None,  # [1, T_gen]
         *,
         store_grads: bool | None = None,
         store_attns: bool | None = None,
@@ -71,7 +71,7 @@ class SaliencyExtractor:
         ```
 
         Args:
-            generated_ids (torch.Tensor): Tensor of generated token IDs during inference. Shape: [1, T_gen].
+            generated_ids (torch.Tensor | None): Tensor of generated token IDs during inference. Shape: [1, T_gen]. If None, uses input_ids.
             store_grads (bool | None, default=None): Whether to store gradients during tracing. If None, uses the engine's default.
             store_attns (bool | None, default=None): Whether to store attention weights during tracing. If None, uses the engine's default.
             input_ids (torch.Tensor): Tensor of input token IDs (prompt). Shape: [1, T_prompt].
@@ -88,8 +88,14 @@ class SaliencyExtractor:
         store_attns = store_attns if store_attns is not None else self.store_attns
         store_grads = store_grads if store_grads is not None else self.store_grads
 
+        # Ensure at least one of attns or grads is captured
         if not store_attns and not store_grads:
             raise ValueError("At least one of store_attns or store_grads must be True to capture a trace.")
+
+        # Use input_ids as generated_ids if not provided
+        if generated_ids is None:
+            generated_ids = input_ids
+        assert generated_ids is not None  # type checker
 
         # Ensure batch size is 1
         if generated_ids.ndim != 2 or input_ids.ndim != 2 or generated_ids.size(0) != 1 or input_ids.size(0) != 1:
@@ -131,7 +137,7 @@ class SaliencyExtractor:
         generated_ids = generated_ids.clone().detach().to(device)
         pixel_values = pixel_values.to(device)
 
-        gen_start = input_ids.shape[1]
+        gen_start = input_ids.shape[1] if generated_ids.shape[1] > input_ids.shape[1] else 0
         attention_mask = (generated_ids != pad_id).long().to(device)
 
         was_training = self.model.training
@@ -169,7 +175,8 @@ class SaliencyExtractor:
             outputs.loss.backward()
 
             grad = torch.cat(
-                [a.grad.detach().cpu() for a in attn_matrices], dim=0  # type: ignore[union-attr]
+                [a.grad.detach().cpu() for a in attn_matrices],
+                dim=0,  # type: ignore[union-attr]
             )  # [num_layers, heads, tokens, tokens]
             grad = grad[:, :, gen_start:, :]  # Keep only generated tokens
 

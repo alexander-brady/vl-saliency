@@ -190,3 +190,23 @@ def test_grad_only_returns_expected_shapes(dummy_model, dummy_processor, monkeyp
     layers, heads = dummy_model.n_layers, dummy_model.n_heads
     gen_tokens = gen.shape[1] - inp.shape[1]
     assert list(grad0.shape) == [layers, heads, gen_tokens, 1, 1]
+
+
+def test_uses_input_ids_as_generated_if_none(dummy_model, dummy_processor, monkeypatched_utils):
+    eng = SaliencyExtractor(dummy_model, dummy_processor, store_attns=True, store_grads=False)
+    _, inp, px = make_minimal_inputs(gen_len=6, prompt_len=2, image_tokens=1, image_token_id=99)
+
+    trace = eng.capture(None, input_ids=inp, pixel_values=px, store_attns=True, store_grads=False)
+    # Trace object actually is DummyTrace; but ensure it's created
+    assert isinstance(trace, Trace)
+    assert trace.grad is None
+    assert isinstance(trace.attn, list) and len(trace.attn) == 1  # one image
+    attn0 = trace.attn[0]
+    # Expected: [layers, heads, gen_tokens, H, W]
+    layers, heads = dummy_model.n_layers, dummy_model.n_heads
+
+    assert list(attn0.shape) == [layers, heads, inp.shape[1], 1, 1]  # Keep all tokens
+    assert trace.image_token_id == 99
+    assert trace.gen_start == 0
+    assert trace.processor == dummy_processor
+    assert trace.token_ids == inp[0].tolist()
