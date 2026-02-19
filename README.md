@@ -30,8 +30,11 @@ pip install vl-saliency
 
 Using `SaliencyExtractor` objects, you can easily compute and visualize saliency maps for any Hugging Face Image-Text-to-Text model.
 
+> **Limitation**: This library currently only supports inputs with exactly one image per item in the batch (or completely image-free batches). Support for multiple images per item will be added in a future release.
+
 ```python
 from vl_saliency import SaliencyExtractor
+from vl_saliency.viz import plot_saliency_map
 
 # Initialize the model and input prompt
 model = AutoModel.from_pretrained("model_name")  # Replace with your model name
@@ -41,32 +44,36 @@ image = PIL.Image.open("path_to_image.jpg")  # Load your image
 inputs = processor(text="Your prompt", images=image, return_tensors="pt")
 
 # Initialize the saliency extractor
-extractor = SaliencyExtractor(model, processor)
+extractor = SaliencyExtractor(model, bind=True)  # bind=True automatically hooks into the model's forward and backward passes
+sctx = extractor(**inputs)  # Retrieve the saliency context, which is used to compute saliency maps for the generated token
 
-# Generate response 
+# Generate response and saliency maps in a single step
 with torch.inference_mode():
-    generated_ids = model.generate(**inputs, do_sample=True, max_new_tokens=200) 
-    
-# Compute attention and gradients
-trace = extractor.capture(**inputs, generated_ids=generated_ids)
+    _ = model.generate(**inputs, saliency=sctx) 
 
 # Compute the saliency map from a specific token to the image
-saliency_map = trace.map(token=200)  # Change token_index as needed
-
-# Aggregate the saliency map's layers and heads
-saliency_map = saliency_map.agg(layer_reduce="mean", head_reduce="mean")
+saliency_map = sctx.map(token=200)  # Change token index as needed
 
 # Visualize the saliency map
-saliency_map.plot(image, title="Saliency Map")
+plot_saliency_map(saliency_map, image, title="Saliency Map")
 ```
 
 ## Attention and Gradients
 
-You can compute saliency maps based on either attention weights or gradients. By default, `SaliencyExtractor` stores both attention and gradient information during the forward and backward passes. If you only need one of these, you can disable the other to save memory and computation time.
+You can compute saliency maps based on the model's attention weights. Alternatively, you can compute gradient-based saliency maps by back-propagating from the generated token of interest to the image tokens. 
 
 ```python
-# Initialize the saliency extractor to store only gradients
-extractor = SaliencyExtractor(model, processor, store_attns=False) # Similarly, use store_grads=False to store only attention
+extractor = SaliencyExtractor(model)
+sctx = extractor(**inputs)
+
+# Generate response 
+output = model.generate(**inputs, saliency=sctx, return_dict=True)
+
+saliency_map = sctx.map(token=200)  # Attention-based saliency map
+saliency_map.backward()  # Backpropagate to compute gradients
+
+
+
 
 saliency_map = extractor.capture(**inputs, generated_ids=generated_ids).map(token=200)
 saliency_map.agg().plot(image, title="Gradient-based Saliency Map")

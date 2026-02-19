@@ -1,27 +1,35 @@
 import logging
 
-from vl_saliency.utils.logger import get_logger
+import vl_saliency.utils.logger as m
 
 
-def test_logger_emits_messages_respects_level(capsys):
-    logger = get_logger("behave", level=logging.WARNING)
-
-    logger.info("should NOT appear")
-    logger.warning("should appear")
-
-    captured = capsys.readouterr()
-    assert "should NOT appear" not in captured.out
-    assert "should appear" in captured.out
+def test_default_log_level(monkeypatch):
+    monkeypatch.delenv(m.ENV_LOG_LEVEL_KEY, raising=False)
+    logger = m.get_logger("test_default")
+    assert logger.level == logging.INFO
 
 
-def test_no_duplicate_handlers_on_multiple_calls(capsys):
-    logger1 = get_logger("dup")
-    logger2 = get_logger("dup")
+def test_env_log_level_override(monkeypatch):
+    monkeypatch.setenv(m.ENV_LOG_LEVEL_KEY, "debug")
+    logger = m.get_logger("test_env")
+    assert logger.level == logging.DEBUG
 
-    assert logger1 is logger2
-    assert len(logger1.handlers) == 1  # no duplicates
 
-    logger1.error("error once")
-    captured = capsys.readouterr()
-    # message should appear only once
-    assert captured.out.count("error once") == 1
+def test_warning_once_logs_once(caplog):
+    logger = m.get_logger("test_warning_once")
+    with caplog.at_level(logging.WARNING):
+        logger.warning_once("hello")
+        logger.warning_once("hello")
+
+    assert len(caplog.records) == 1
+    assert caplog.records[0].message == "hello"
+
+
+def test_info_once_logs_once(caplog):
+    logger = m.get_logger("test_info_once")
+    with caplog.at_level(logging.INFO):
+        logger.info_once("hello")
+        logger.info_once("hello")
+
+    assert len(caplog.records) == 1
+    assert caplog.records[0].message == "hello"
