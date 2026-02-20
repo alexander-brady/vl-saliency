@@ -1,65 +1,66 @@
+from functools import cache
+
 import torch
+from jaxtyping import Bool, Float, Int
+from torch import Tensor
 
-from vl_saliency._types import Reduction
+from vl_saliency._types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
+
+from .reduce import _HEAD_REDUCE, _LAYER_REDUCE
+from .scores import _compute_scores
 
 
-def saliency_qk(
-    q: torch.Tensor,
-    k: torch.Tensor,
-    *,
-    gen_idx: torch.Tensor,
-    gen_mask: torch.Tensor,
-    img_idx: torch.Tensor,
-    img_mask: torch.Tensor,
-    scale: float,
-    layer_reduce: Reduction = "mean",
-    head_reduce: Reduction = "mean",
-    saliency: torch.Tensor,
-) -> torch.Tensor:
-    B, Hq, T, D = q.shape
-    Hkv = k.shape[1]
+@cache
+def saliency_qk_eager(
+    head_reduce: Reduction,
+    layer_reduce: Reduction,
+    head_op: HeadOp | None,
+    layer_op: LayerOp | None,
+) -> SaliencyQKFunction:
+    head_reduce_fn = _HEAD_REDUCE[head_reduce]
+    layer_accum_fn = _LAYER_REDUCE[layer_reduce]
 
-    if Hq != Hkv:
-        assert Hq % Hkv == 0
-        rep = Hq // Hkv
-        k = k.repeat_interleave(rep, dim=1)  # [B, Hq, T, D]
+    def fn(
+        q: Float[Tensor, "B Hq T D"],
+        k: Float[Tensor, "B Hkv T D"],
+        gen_idx: Int[Tensor, "B T_gen"],
+        gen_mask: Bool[Tensor, "B T_gen"],
+        img_idx: Int[Tensor, "B T_img"],
+        img_mask: Bool[Tensor, "B T_img"],
+        scale: float,
+        saliency: Float[Tensor, "B T_gen T_img"],
+    ) -> Float[Tensor, "B T_gen T_img"]:
+        scores = _compute_scores(q, k, gen_idx, img_idx, scale)  # [B, Hq, T_gen, T_img]
+        mask = gen_mask[:, None, :, None] & img_mask[:, None, None, :]  # [B, 1, T_gen, T_img]
 
-    # Remove -1 indices for gathering
-    gen_idx = gen_idx.clamp(min=0)
-    img_idx = img_idx.clamp(min=0)
+        if head_op is not None:
+            scores = head_op(scores, mask)
 
-    # Gather the relevant query and key vectors
-    qg = q.gather(dim=2, index=gen_idx[:, None, :, None].expand(B, Hq, -1, D))  # [B, Hq, T_gen, D]
-    ki = k.gather(dim=2, index=img_idx[:, None, :, None].expand(B, Hq, -1, D))  # [B, Hq, T_img, D]
+        scores = head_reduce_fn(scores, mask)  # [B, T_gen, T_img]
 
-    # Compute scaled dot product attention scores: [B, Hq, T_gen, T_img]
-    scores = torch.einsum("b h t d, b h s d -> b h t s", qg, ki) * scale
+        mask = mask.squeeze(1)  # [B, T_gen, T_img]
+        if layer_op is not None:
+            scores = layer_op(scores, mask)
 
-    # Mask out padding tokens
-    scores = scores * gen_mask[:, None, :, None] * img_mask[:, None, None, :]
+        saliency = layer_accum_fn(saliency, scores)
+        return saliency
 
-    # Reduce over heads and layers
-    match head_reduce:
-        case "mean":
-            scores = scores.mean(dim=1)
-        case "sum":
-            scores = scores.sum(dim=1)
-        case "max":
-            scores = scores.max(dim=1).values
-        case "min":
-            scores = scores.min(dim=1).values
-        case "prod":
-            scores = scores.prod(dim=1)
+    return fn
 
-    # Aggregate with existing saliency
-    match layer_reduce:
-        case "mean" | "sum":
-            saliency = saliency + scores
-        case "max":
-            saliency = torch.max(saliency, scores)
-        case "min":
-            saliency = torch.min(saliency, scores)
-        case "prod":
-            saliency = saliency * scores
 
-    return saliency
+@cache
+def saliency_qk_compiled(
+    head_reduce: Reduction,
+    layer_reduce: Reduction,
+    head_op: HeadOp | None,
+    layer_op: LayerOp | None,
+) -> SaliencyQKFunction:
+    # For now: if head_op or layer_op is not None, we can't compile because they might not be pure.
+    # TODO: Add support for common operations like ReLU, LayerNorm, etc. and compile those.
+    full_graph = head_op is None and layer_op is None
+    return torch.compile(
+        saliency_qk_eager(head_reduce, layer_reduce, head_op, layer_op),
+        mode="max-autotune",
+        dynamic=True,  # Variable sequence lengths and masking
+        fullgraph=full_graph,
+    )

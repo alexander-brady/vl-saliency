@@ -1,6 +1,7 @@
 import torch
 
 from vl_saliency.attn import saliency_attention
+from vl_saliency.context import SaliencyContext
 
 # ------ Dummy implementations for testing ------
 
@@ -21,22 +22,25 @@ def dummy_attention_forward(module, query, key, value, attention_mask, **kwargs)
     return query, torch.ones(1, 2, 3, 3)
 
 
-def mock_get_saliency_qk(backend, device):
-    return lambda **kwargs: torch.tensor([99.0])
+class DummyContext(SaliencyContext):
+    def __init__(self, attn_implementation="dummy_attention"):
+        self.attn_implementation = attn_implementation
+
+    def qk_step(self, q, k):
+        self.qk_step_called = True
 
 
 # ------ Test case for saliency_attention ------
 
 
-def test_saliency_attention(monkeypatch, dummy_context):
+def test_saliency_attention(monkeypatch):
     monkeypatch.setattr(
         "vl_saliency.attn.ALL_ATTENTION_FUNCTIONS",
         DummyAttentionFunctions(dummy_attention_forward),
     )
-    monkeypatch.setattr(
-        "vl_saliency.attn.get_saliency_qk",
-        mock_get_saliency_qk,
-    )
+
+    ctx = DummyContext()
+
     q = torch.randn(1, 2, 3, 4)
     k = torch.randn(1, 2, 3, 4)
     v = torch.randn(1, 2, 3, 4)
@@ -48,10 +52,10 @@ def test_saliency_attention(monkeypatch, dummy_context):
         key=k,
         value=v,
         attention_mask=mask,
-        saliency=dummy_context,
+        saliency=ctx,
         extra="kwarg",
     )
     assert torch.equal(output, q)
     assert weights is not None
     assert torch.equal(weights, torch.ones(1, 2, 3, 3))
-    assert torch.equal(dummy_context.updated_value, torch.tensor([99.0]))
+    assert ctx.qk_step_called

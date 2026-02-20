@@ -1,6 +1,12 @@
 import torch
+from jaxtyping import Float
+from torch import Tensor
 
-from vl_saliency._types import Backend, Reduction
+from vl_saliency._types import Backend, HeadOp, LayerOp, Reduction
+from vl_saliency.backends.dispatcher import assign_auto, get_saliency_qk
+from vl_saliency.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class SaliencyContext:
@@ -16,34 +22,42 @@ class SaliencyContext:
 
     Methods:
         reset(): Resets the saliency map to zeros. Should be called at the start of each forward pass if reusing the same context object.
-        update(saliency: torch.Tensor): Updates the saliency map with the provided tensor. This is called internally by the attention function after computing the saliency map for the current layer.
+        qk_step(q, k): Computes the saliency map for the given query and key tensors using the configured backend and reduction methods.
         map(token: int, batch_idx: int = 0, img_idx: int = 0): Retrieves the saliency map for a specific generated token and image token, returning it as a 2D tensor of shape (height, width) corresponding to the patch layout of the image.
     """
 
     def __init__(
         self,
-        input_ids: torch.Tensor,
+        input_ids: Float[Tensor, "B S"],
         pad_token_id: int,
         image_token_id: int,
         patch_shapes: list[list[tuple[int, int]]],
         scale: float,
-        layer_reduce: Reduction = "mean",
         head_reduce: Reduction = "mean",
+        head_op: HeadOp | None = None,
+        layer_reduce: Reduction = "mean",
+        layer_op: LayerOp | None = None,
         attn_implementation: str = "sdpa",
         backend: Backend = "auto",
     ) -> None:
         self.patch_shapes = patch_shapes
+
         self.scale = scale
-
-        self.layer_reduce: Reduction = layer_reduce
-        self.head_reduce: Reduction = head_reduce
-
         self.attn_implementation = attn_implementation
-        self.backend: Backend = backend
+        self.layer_reduce = layer_reduce
 
         # Build indices and masks to identify image and generated tokens
         self._build_indices(input_ids, pad_token_id, image_token_id)
         self.reset()
+
+        # Store saliency computation function based on the specified backend and reduction methods
+        self._set_qk_fn(
+            backend=backend,
+            head_reduce=head_reduce,
+            layer_reduce=layer_reduce,
+            head_op=head_op,
+            layer_op=layer_op,
+        )
 
         # Precompute image token offsets for efficient indexing
         self.image_token_offsets: list[list[int]] = []
@@ -60,11 +74,6 @@ class SaliencyContext:
             device=self.device,
         )
         self.updates = 0  # Track updates for layer reduction (e.g., averaging across layers)
-
-    def update(self, saliency: torch.Tensor):
-        """Replace the current saliency map with the provided one, and increment the update counter."""
-        self.saliency = saliency
-        self.updates += 1
 
     def map(self, token: int, batch_idx: int = 0, img_idx: int = 0) -> torch.Tensor:
         """
@@ -104,7 +113,45 @@ class SaliencyContext:
 
         return image_tokens.view(H, W)
 
-    def _build_indices(self, input_ids: torch.Tensor, pad_token_id: int, image_token_id: int):
+    def qk_step(self, q: Float[Tensor, "B Hq T D"], k: Float[Tensor, "B Hkv T D"]):
+        """Compute the saliency map for the given query and key tensors using the configured backend and reduction methods."""
+        self.updates += 1
+        self.saliency = self._saliency_qk_fn(
+            q,
+            k,
+            gen_idx=self.gen_token_idx,
+            gen_mask=self.gen_mask,
+            img_idx=self.img_token_idx,
+            img_mask=self.img_mask,
+            scale=self.scale,
+            saliency=self.saliency,
+        )
+
+    def _set_qk_fn(
+        self,
+        backend: Backend,
+        head_reduce: Reduction,
+        layer_reduce: Reduction,
+        head_op: HeadOp | None,
+        layer_op: LayerOp | None,
+    ):
+        """Set the backend for saliency computation, allowing dynamic switching between implementations."""
+
+        if backend == "auto":
+            backend = assign_auto(self.device)
+            logger.info_once(f"Auto-assigned backend '{backend}'.")
+
+        self._saliency_qk_fn = get_saliency_qk(
+            backend,
+            head_reduce=head_reduce,
+            layer_reduce=layer_reduce,
+            head_op=head_op,  # For now, we don't support custom head/layer ops with compiled backends
+            layer_op=layer_op,
+        )
+
+    def _build_indices(
+        self, input_ids: Float[Tensor, "B S"], pad_token_id: int, image_token_id: int
+    ):
         """Builds index tensors and masks to identify image and generated tokens in the input sequences, while minimizing padding."""
         self.device = input_ids.device
         self.B, S = input_ids.shape

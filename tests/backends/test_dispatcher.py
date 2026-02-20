@@ -29,42 +29,57 @@ def triton_available(monkeypatch):
 
 
 def test_torch_backend(monkeypatch):
-    monkeypatch.setattr(m, "saliency_qk_torch", lambda: "compiled")
-    fn = m.get_saliency_qk("torch", torch.device("cuda"))
+    # Mock the compiled function to test that it's returned
+    monkeypatch.setattr(m, "saliency_qk_compiled", lambda *args, **kwargs: "compiled")
+    fn = m.get_saliency_qk(
+        "torch", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
+    )
     assert fn == "compiled"
 
 
-def test_triton_backend(triton_available):
-    fn = m.get_saliency_qk("triton", torch.device("cuda"))
-    assert fn is m.saliency_qk_triton
+def test_triton_backend(triton_available, monkeypatch):
+    monkeypatch.setattr(m, "saliency_qk_triton", lambda *args, **kwargs: "triton")
+    fn = m.get_saliency_qk(
+        "triton", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
+    )
+    assert fn == "triton"
 
 
-def test_torch_eager_backend():
-    fn = m.get_saliency_qk("torch_eager", torch.device("cpu"))
-    assert fn is m.saliency_qk_torch_eager
+def test_torch_eager_backend(monkeypatch):
+    monkeypatch.setattr(m, "saliency_qk_eager", lambda *args, **kwargs: "eager")
+    fn = m.get_saliency_qk(
+        "torch_eager", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
+    )
+    assert fn == "eager"
+
+    # Test that the eager function is returned when compilation fails
+    monkeypatch.setattr(
+        m, "saliency_qk_compiled", lambda *args, **kwargs: (_ for _ in ()).throw(Exception())
+    )
+    fn = m.get_saliency_qk(
+        "torch", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
+    )
+    assert fn == "eager"
+
+
+def test_torch_auto_backend(monkeypatch):
+    monkeypatch.setattr(m, "assign_auto", lambda device: "torch_eager")
+    monkeypatch.setattr(m, "saliency_qk_eager", lambda *args, **kwargs: "eager")
+    fn = m.get_saliency_qk(
+        "auto", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
+    )
+    assert fn == "eager"
 
 
 def test_auto_selects_triton(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: True)
-    fn = m.get_saliency_qk("auto", torch.device("cuda"))
-    assert fn is m.saliency_qk_triton
+    assert m.assign_auto(torch.device("cuda")) == "triton"
 
 
 def test_auto_selects_torch(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: False)
-    monkeypatch.setattr(m, "saliency_qk_torch", lambda: "compiled")
-    fn = m.get_saliency_qk("auto", torch.device("cuda"))
-    assert fn == "compiled"
-
-
-def test_auto_selects_eager_on_cpu():
-    fn = m.get_saliency_qk("auto", torch.device("cpu"))
-    assert fn is m.saliency_qk_torch_eager
-
-
-def test_invalid_backend():
-    with pytest.raises(ValueError):
-        m.get_saliency_qk("invalid", torch.device("cpu"))
+    assert m.assign_auto(torch.device("cuda")) == "torch"
+    assert m.assign_auto(torch.device("cpu")) == "torch_eager"
 
 
 def test_is_triton_available_import_error(monkeypatch):

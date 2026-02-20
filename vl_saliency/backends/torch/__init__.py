@@ -1,4 +1,3 @@
-from .compile import compiled_saliency_qk
-from .saliency_qk import saliency_qk
+from .saliency_qk import saliency_qk_compiled, saliency_qk_eager
 
-__all__ = ["saliency_qk", "compiled_saliency_qk"]
+__all__ = ["saliency_qk_eager", "saliency_qk_compiled"]

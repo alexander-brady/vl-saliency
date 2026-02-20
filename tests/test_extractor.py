@@ -59,6 +59,22 @@ def monkeypath_infer_helpers(monkeypatch):
     )
 
 
+@pytest.fixture
+def context_as_dict(monkeypatch):
+    captured = {}
+
+    class DummyContext:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+    monkeypatch.setattr(
+        "vl_saliency.extractor.SaliencyContext",
+        DummyContext,
+    )
+
+    return captured
+
+
 # ------ Test case for extractor ------
 
 
@@ -108,15 +124,16 @@ def test_static_patch_tuple_is_wrapped(model, monkeypatch):
     assert called["args"] == (4, 4)
 
 
-def test_callable_patch_fn_used(model, input_ids, pixel_values):
+def test_callable_patch_fn_used(model, input_ids, pixel_values, context_as_dict):
     def patch_fn(batch_size, image_count, **kwargs):
         return [[(1, 1)] for _ in range(image_count)]
 
     extractor = SaliencyExtractor(model, image_patch_fn=patch_fn)
 
-    ctx = extractor(input_ids=input_ids, pixel_values=pixel_values)
+    _ = extractor(input_ids=input_ids, pixel_values=pixel_values)
 
-    assert len(ctx.patch_shapes) == pixel_values.shape[0]
+    assert context_as_dict["patch_shapes"] == [[(1, 1)], [(1, 1)]]
+    assert context_as_dict["scale"] == extractor.scale
 
 
 def test_image_counts_neq_batch_size_raises(model):
@@ -132,22 +149,51 @@ def test_image_counts_neq_batch_size_raises(model):
         extractor(input_ids=input_ids, pixel_values=pixel_values)
 
 
-def test_no_pixel_values_gives_empty_patch_shapes(model, input_ids):
+def test_no_pixel_values_gives_empty_patch_shapes(model, input_ids, context_as_dict):
     extractor = SaliencyExtractor(model)
 
-    ctx = extractor(input_ids=input_ids, pixel_values=None)
+    _ = extractor(input_ids=input_ids, pixel_values=None)
 
-    assert ctx.patch_shapes == [[] for _ in range(input_ids.shape[0])]
+    assert context_as_dict["patch_shapes"] == [[] for _ in range(input_ids.shape[0])]
 
 
-def test_reduction_overrides(model, input_ids):
+def test_reduction_overrides(model, input_ids, context_as_dict):
     extractor = SaliencyExtractor(model, layer_reduce="mean", head_reduce="mean")
 
-    ctx = extractor(
+    _ = extractor(
         input_ids=input_ids,
         layer_reduce="max",
         head_reduce="sum",
     )
 
-    assert ctx.layer_reduce == "max"
-    assert ctx.head_reduce == "sum"
+    assert context_as_dict["layer_reduce"] == "max"
+    assert context_as_dict["head_reduce"] == "sum"
+
+
+def test_bad_patch_fn_raises(model):
+    def bad_patch_fn(batch_size, image_count, **kwargs):
+        return [[(1, 1)] for _ in range(batch_size + 1)]  # Return one more than needed
+
+    extractor = SaliencyExtractor(model, image_patch_fn=bad_patch_fn)
+
+    with pytest.raises(ValueError, match="patch shapes"):
+        extractor(input_ids=torch.randint(0, 100, (1, 10)), pixel_values=torch.randn(1, 3, 32, 32))
+
+
+def test_ops_overrides(model, input_ids, context_as_dict):
+    extractor = SaliencyExtractor(model, layer_reduce="mean", head_reduce="mean")
+
+    def head_op(scores: torch.Tensor, mask: torch.Tensor):
+        return scores * 2
+
+    def layer_op(scores: torch.Tensor, mask: torch.Tensor):
+        return scores + 1
+
+    _ = extractor(
+        input_ids=input_ids,
+        layer_op=layer_op,
+        head_op=head_op,
+    )
+
+    assert context_as_dict["layer_op"] == layer_op
+    assert context_as_dict["head_op"] == head_op

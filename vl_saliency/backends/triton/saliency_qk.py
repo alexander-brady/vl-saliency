@@ -1,19 +1,10 @@
-import torch
-
-from vl_saliency._types import Reduction
+from vl_saliency._types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
 
 
 def saliency_qk(
-    q: torch.Tensor,
-    k: torch.Tensor,
-    *,
-    gen_idx: torch.Tensor,
-    gen_mask: torch.Tensor,
-    img_idx: torch.Tensor,
-    img_mask: torch.Tensor,
-    scale: float,
-    layer_reduce: Reduction = "mean",
-    head_reduce: Reduction = "mean",
-    saliency: torch.Tensor,
-) -> torch.Tensor:
+    head_reduce: Reduction,
+    layer_reduce: Reduction,
+    head_op: HeadOp | None,
+    layer_op: LayerOp | None,
+) -> SaliencyQKFunction:
     raise NotImplementedError("Triton backend is not yet implemented")

@@ -1,20 +1,8 @@
-from typing import ParamSpec, Protocol
+from jaxtyping import Float
+from torch import Tensor
 
-import torch
 
 # TODO: Align with multiple images per input. Currently, all items in the batch must have one image for this to work.
-
-P = ParamSpec("P")
-
-
-class ImagePatchFunction(Protocol[P]):
-    """Protocol for functions that return image patch shapes given input data."""
-
-    def __call__(
-        self, batch_size: int, image_count: int, *args: P.args, **kwargs: P.kwargs
-    ) -> list[list[tuple[int, int]]]: ...
-
-
 class StaticPatches:
     """Returns static patch shapes for all images."""
 
@@ -27,7 +15,7 @@ class StaticPatches:
 
 
 def image_thw_to_patches(
-    batch_size: int, image_count: int, image_grid_thw: torch.Tensor, **kwargs
+    batch_size: int, image_count: int, image_grid_thw: Float[Tensor, "B 3"], **kwargs
 ) -> list[list[tuple[int, int]]]:
     """Convert image grid sizes from (T, H, W) format to patch shapes."""
 

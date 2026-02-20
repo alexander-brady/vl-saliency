@@ -1,13 +1,14 @@
 import math
 
-import torch
+from jaxtyping import Float
+from torch import Tensor
 from transformers import PreTrainedModel
 
-from vl_saliency._types import Backend, Reduction
+from vl_saliency._types import Backend, HeadOp, ImagePatchFunction, LayerOp, Reduction
 from vl_saliency.context import SaliencyContext
 from vl_saliency.utils.image_init import infer_image_patch_fn, infer_image_token_id
 from vl_saliency.utils.logger import get_logger
-from vl_saliency.utils.patch_fns import ImagePatchFunction, StaticPatches
+from vl_saliency.utils.patch_fns import StaticPatches
 
 logger = get_logger(__name__)
 
@@ -36,12 +37,16 @@ class SaliencyExtractor:
         image_token_id: int | None = None,
         image_patch_fn: tuple[int, int] | ImagePatchFunction | None = None,
         layer_reduce: Reduction = "mean",
+        layer_op: LayerOp | None = None,
         head_reduce: Reduction = "mean",
+        head_op: HeadOp | None = None,
         backend: Backend = "auto",
     ):
         self.model = model
         self.layer_reduce: Reduction = layer_reduce
+        self.layer_op: LayerOp | None = layer_op
         self.head_reduce: Reduction = head_reduce
+        self.head_op: HeadOp | None = head_op
         self.backend: Backend = backend
 
         # Bind custom attention implementation to the model for saliency extraction if specified.
@@ -72,10 +77,12 @@ class SaliencyExtractor:
 
     def __call__(
         self,
-        input_ids: torch.Tensor,
-        pixel_values: torch.Tensor | None = None,
+        input_ids: Float[Tensor, "B S"],
+        pixel_values: Float[Tensor, "B C H W"] | None = None,
         layer_reduce: Reduction | None = None,
         head_reduce: Reduction | None = None,
+        layer_op: LayerOp | None = None,
+        head_op: HeadOp | None = None,
         **kwargs,
     ) -> SaliencyContext:
         """Create Saliency Context for given input, to be used to compute saliency maps during the forward pass.
@@ -84,13 +91,16 @@ class SaliencyExtractor:
         Args:
             input_ids (torch.Tensor): Input token IDs.
             pixel_values (torch.Tensor | None, optional): Input image pixel values. Defaults to None.
-            layer_reduce (Reduction | None, optional): Method to reduce attention across layers. Defaults to None.
-            head_reduce (Reduction | None, optional): Method to reduce attention across heads. Defaults to None.
+            layer_reduce (Reduction | None, optional): Method to reduce attention across layers. If None, will use the default specified in the constructor.
+            head_reduce (Reduction | None, optional): Method to reduce attention across heads. If None, will use the default specified in the constructor.
+            layer_op (LayerOp | None, optional): Operation to be applied to each layer's saliency before aggregation. If None, uses the default specified in the constructor.
+            head_op (HeadOp | None, optional): Operation to be applied to each head's saliency before aggregation. If None, uses the default specified in the constructor.
             **kwargs: Additional keyword arguments to be passed to the image_patch_fn.
+
         Returns:
             SaliencyContext: The created SaliencyContext for the given input.
         """
-        B, T_gen = input_ids.shape
+        B, S = input_ids.shape
 
         # Calculate patch shapes if pixel values are provided and have the expected shape
         if pixel_values is not None and pixel_values.ndim == 4 and pixel_values.shape[0] > 0:
@@ -126,6 +136,8 @@ class SaliencyExtractor:
             scale=self.scale,
             layer_reduce=layer_reduce or self.layer_reduce,
             head_reduce=head_reduce or self.head_reduce,
+            layer_op=layer_op or self.layer_op,
+            head_op=head_op or self.head_op,
             backend=self.backend,
         )
         return context

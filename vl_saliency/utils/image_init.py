@@ -1,6 +1,8 @@
 from transformers import PretrainedConfig
 
-from .patch_fns import ImagePatchFunction, StaticPatches, image_thw_to_patches
+from vl_saliency._types import ImagePatchFunction
+
+from .patch_fns import StaticPatches, image_thw_to_patches
 
 
 def infer_image_token_id(config: PretrainedConfig) -> int:
