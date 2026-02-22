@@ -1,5 +1,5 @@
 import torch
-from jaxtyping import Float
+from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
 from vl_saliency._types import Backend, HeadOp, LayerOp, Reduction
@@ -23,7 +23,7 @@ class SaliencyContext:
     Methods:
         reset(): Resets the saliency map to zeros. Should be called at the start of each forward pass if reusing the same context object.
         qk_step(q, k): Computes the saliency map for the given query and key tensors using the configured backend and reduction methods.
-        map(token: int, batch_idx: int = 0, img_idx: int = 0): Retrieves the saliency map for a specific generated token and image token, returning it as a 2D tensor of shape (height, width) corresponding to the patch layout of the image.
+        get_map(token: int, batch_idx: int = 0, img_idx: int = 0): Retrieves the saliency map for a specific generated token and image token, returning it as a 2D tensor of shape (height, width) corresponding to the patch layout of the image.
     """
 
     def __init__(
@@ -75,7 +75,7 @@ class SaliencyContext:
         )
         self.updates = 0  # Track updates for layer reduction (e.g., averaging across layers)
 
-    def map(self, token: int, batch_idx: int = 0, img_idx: int = 0) -> torch.Tensor:
+    def get_map(self, token: int, batch_idx: int = 0, img_idx: int = 0) -> torch.Tensor:
         """
         Returns the saliency map for the specified text token and image token.
 
@@ -116,7 +116,7 @@ class SaliencyContext:
     def qk_step(self, q: Float[Tensor, "B Hq T D"], k: Float[Tensor, "B Hkv T D"]):
         """Compute the saliency map for the given query and key tensors using the configured backend and reduction methods."""
         self.updates += 1
-        self.saliency = self._saliency_qk_fn(
+        self._saliency_qk_fn(
             q,
             k,
             gen_idx=self.gen_token_idx,
@@ -153,56 +153,49 @@ class SaliencyContext:
         self, input_ids: Float[Tensor, "B S"], pad_token_id: int, image_token_id: int
     ):
         """Builds index tensors and masks to identify image and generated tokens in the input sequences, while minimizing padding."""
-        self.device = input_ids.device
-        self.B, S = input_ids.shape
 
-        is_pad = input_ids == pad_token_id
-        is_img = input_ids == image_token_id
+        device = input_ids.device
+        B, S = input_ids.shape
 
-        pos = torch.arange(
-            S, device=self.device
-        )  # [S], position indices for each token in the sequence
+        # Masks
+        is_pad = input_ids == pad_token_id  # [B, S]
+        is_img = input_ids == image_token_id  # [B, S]
 
-        # Find the position of the last image token in each sequence (or S if no image token is present)
+        # Last image position per sequence (or S if no image tokens)
+        rev_idx = is_img.flip(dims=[1]).float().argmax(dim=1)  # [B]
         has_img = is_img.any(dim=1)  # [B]
-        last_img = torch.where(
-            has_img,
-            (is_img * pos).max(dim=1).values,
-            torch.full(
-                (self.B,), S, device=self.device, dtype=pos.dtype
-            ),  # If no image token, set to S (out of bounds)
-        )  # [B]
 
-        # Non-image tokens after the last image token are considered generated
-        pos = pos[None, :]
-        is_gen = ~is_pad & ~is_img & (pos > last_img[:, None])  # [B, S]
+        last_img = S - 1 - rev_idx  # [B]
+        last_img = torch.where(has_img, last_img, torch.full_like(last_img, S))
 
-        pos = pos.expand(self.B, S)  # [B, S]
-        img_pos = pos.masked_fill(~is_img, -1)  # [B, S]
-        gen_pos = pos.masked_fill(~is_gen, -1)  # [B, S]
+        # Generated token mask
+        pos = torch.arange(S, device=device)  # [S]
+        is_gen = (~is_pad) & (~is_img) & (pos.unsqueeze(0) > last_img.unsqueeze(1))  # [B, S]
 
-        # Minimize padding by compacting indices to the left and keeping track of valid lengths with masks
-        img_lists = [row[row != -1] for row in img_pos]
-        gen_lists = [row[row != -1] for row in gen_pos]
+        def compact(mask: Bool[Tensor, "B S"]) -> tuple[Int[Tensor, "B"], Bool[Tensor, "B S"], int]:
+            """Compacts the mask to minimize padding, returning new lengths and a compacted mask."""
+            counts = mask.sum(dim=1)  # [B]
+            T = int(counts.max().item())
 
-        self.T_img = max((len(lst) for lst in img_lists), default=0)
-        self.T_gen = max((len(lst) for lst in gen_lists), default=0)
+            if T == 0:
+                return (
+                    torch.empty((B, 0), dtype=torch.int32, device=device),
+                    torch.empty((B, 0), dtype=torch.bool, device=device),
+                    0,
+                )
 
-        # Create padded index tensors and masks for image and generated tokens
-        self.img_token_idx = torch.full(
-            (self.B, self.T_img), -1, dtype=torch.int32, device=self.device
-        )
-        self.gen_token_idx = torch.full(
-            (self.B, self.T_gen), -1, dtype=torch.int32, device=self.device
-        )
-        self.img_mask = torch.zeros((self.B, self.T_img), dtype=torch.bool, device=self.device)
-        self.gen_mask = torch.zeros((self.B, self.T_gen), dtype=torch.bool, device=self.device)
+            # Column indices after compaction
+            col = mask.cumsum(dim=1) - 1  # [B, S]
+            out = torch.full((B, T), -1, dtype=torch.int32, device=device)  # [B, T]
 
-        # Fill the index tensors and masks based on the compacted lists of image and generated token positions
-        for i, (img_row, gen_row) in enumerate(zip(img_lists, gen_lists, strict=False)):
-            if (n := img_row.numel()) > 0:
-                self.img_token_idx[i, :n] = img_row
-                self.img_mask[i, :n] = True
-            if (n := gen_row.numel()) > 0:
-                self.gen_token_idx[i, :n] = gen_row
-                self.gen_mask[i, :n] = True
+            rows, cols = mask.nonzero(as_tuple=True)  # [total_count]
+
+            out[rows, col[rows, cols]] = cols.to(torch.int32)  # [B, T]
+            out_mask = torch.arange(T, device=device).unsqueeze(0) < counts.unsqueeze(1)  # [B, T]
+            return out, out_mask, T
+
+        self.gen_token_idx, self.gen_mask, self.T_gen = compact(is_gen)
+        self.img_token_idx, self.img_mask, self.T_img = compact(is_img)
+
+        self.B = B
+        self.device = device
