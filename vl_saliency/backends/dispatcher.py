@@ -4,7 +4,6 @@ import torch
 
 from vl_saliency._types import Backend, HeadOp, LayerOp, Reduction, SaliencyQKFunction
 from vl_saliency.backends.torch import saliency_qk_compiled, saliency_qk_eager
-from vl_saliency.backends.triton import saliency_qk as saliency_qk_triton
 from vl_saliency.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -36,6 +35,8 @@ def get_saliency_qk(
                 logger.warning("Failed to compile `saliency` kernel, falling back to eager mode.")
                 return saliency_qk_eager(head_reduce, layer_reduce, head_op, layer_op)
         case "triton":
+            from vl_saliency.backends.triton import saliency_qk as saliency_qk_triton
+
             return saliency_qk_triton(head_reduce, layer_reduce, head_op, layer_op)
         case "torch_eager":
             return saliency_qk_eager(head_reduce, layer_reduce, head_op, layer_op)

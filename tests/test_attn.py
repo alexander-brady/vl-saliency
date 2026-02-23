@@ -1,7 +1,7 @@
 import torch
 
 from vl_saliency.attn import saliency_attention
-from vl_saliency.context import SaliencyContext
+from vl_saliency.trace import SaliencyTrace
 
 # ------ Dummy implementations for testing ------
 
@@ -22,11 +22,11 @@ def dummy_attention_forward(module, query, key, value, attention_mask, **kwargs)
     return query, torch.ones(1, 2, 3, 3)
 
 
-class DummyContext(SaliencyContext):
+class DummyContext(SaliencyTrace):
     def __init__(self, attn_implementation="dummy_attention"):
         self.attn_implementation = attn_implementation
 
-    def qk_step(self, q, k):
+    def accumulate_qk(self, q, k):
         self.qk_step_called = True
 
 
@@ -52,6 +52,7 @@ def test_saliency_attention(monkeypatch):
         key=k,
         value=v,
         attention_mask=mask,
+        attn_implementation="dummy_attention",
         saliency=ctx,
         extra="kwarg",
     )

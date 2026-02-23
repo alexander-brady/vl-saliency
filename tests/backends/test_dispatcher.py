@@ -38,7 +38,12 @@ def test_torch_backend(monkeypatch):
 
 
 def test_triton_backend(triton_available, monkeypatch):
-    monkeypatch.setattr(m, "saliency_qk_triton", lambda *args, **kwargs: "triton")
+    try:
+        import vl_saliency.backends.triton as t
+    except ImportError:
+        pytest.skip("Triton not available")
+
+    monkeypatch.setattr(t, "saliency_qk", lambda *args, **kwargs: "triton")
     fn = m.get_saliency_qk(
         "triton", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )

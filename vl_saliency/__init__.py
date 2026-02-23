@@ -1,9 +1,8 @@
 from transformers import AttentionInterface
 
 from .attn import saliency_attention
-from .context import SaliencyContext
-from .extractor import SaliencyExtractor
+from .saliency import Saliency
 
-__all__ = ["SaliencyContext", "SaliencyExtractor", "saliency_attention"]
+__all__ = ["Saliency"]
 
 AttentionInterface.register("saliency", saliency_attention)
