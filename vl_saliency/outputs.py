@@ -15,12 +15,12 @@ class SaliencyOutput(ModelOutput):
     Fields from the original model output can be accessed directly on this object,
     and the saliency map is available as the `saliency` attribute."""
 
-    base_output: ModelOutput
-    """The original output from the model's forward pass."""
     saliency: SaliencyGrid
     """Saliency map computed during the forward pass."""
+    base_output: ModelOutput | None = None
+    """The original output from the model's forward pass."""
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         if is_dataclass(self.base_output) and name in self.base_output.__dataclass_fields__:
             return getattr(self.base_output, name)
         return super().__getattribute__(name)
@@ -125,7 +125,7 @@ class SaliencyGrid:
         elif isinstance(idx, tuple) and len(idx) == 3:
             batch_idx, img_idx, token_idx = idx
         else:
-            raise ValueError(
+            raise IndexError(
                 "Invalid index format. Use [token_idx], [img_idx, token_idx], or [batch_idx, img_idx, token_idx]."
             )
 
@@ -138,9 +138,9 @@ class SaliencyGrid:
             if self._single_batch:
                 return 0
             else:
-                raise ValueError("Batch index must be specified for multi-batch saliency grids.")
+                raise IndexError("Batch index must be specified for multi-batch saliency grids.")
         elif batch_idx < 0 or batch_idx >= self._layout.B:
-            raise ValueError(
+            raise IndexError(
                 f"Batch index {batch_idx} is out of bounds for batch size {self._layout.B}."
             )
         return batch_idx
@@ -152,25 +152,19 @@ class SaliencyGrid:
             if self._single_images:
                 img_idx = 0
             else:
-                raise ValueError("Image index must be specified for multi-image saliency grids.")
+                raise IndexError("Image index must be specified for multi-image saliency grids.")
         elif img_idx < 0 or img_idx >= num_imgs:
-            raise ValueError(
+            raise IndexError(
                 f"Image index {img_idx} is out of bounds for batch index {batch_idx} with {num_imgs} images."
             )
         return img_idx
 
-    def _validate_token_idx(self, batch_idx: int, img_idx: int, token_idx: int) -> int:
+    def _validate_token_idx(self, batch_idx: int, token_idx: int) -> int:
         """Validates the token index for the given batch index."""
         num_tokens = self.num_tokens(batch_idx)
         if token_idx < 0 or token_idx >= num_tokens:
-            raise ValueError(
+            raise IndexError(
                 f"Token index {token_idx} is out of bounds for batch index {batch_idx} with {num_tokens} tokens."
-            )
-        H, W = self._layout.patch_shapes[batch_idx][img_idx]
-        start = self._layout.image_token_offsets[batch_idx][img_idx]
-        if token_idx < start + H * W:
-            raise ValueError(
-                f"Token index {token_idx} does not attend to previous image tokens for batch index {batch_idx} and image index {img_idx}."
             )
         return token_idx
 
@@ -180,5 +174,5 @@ class SaliencyGrid:
         """Validates and returns the batch index, image index, and token index."""
         batch_idx = self._validate_batch_idx(batch_idx)
         img_idx = self._validate_img_idx(batch_idx, img_idx)
-        token_idx = self._validate_token_idx(batch_idx, img_idx, token_idx)
+        token_idx = self._validate_token_idx(batch_idx, token_idx)
         return batch_idx, img_idx, token_idx

@@ -22,6 +22,7 @@ class SaliencyTrace:
         config (SaliencyConfig): The configuration object containing parameters for saliency extraction.
         input_ids (torch.Tensor): The input token IDs for the batch, used to identify image and generated tokens.
         pixel_values (torch.Tensor | None): The input pixel values for the batch, used for dynamic patch shape inference if needed.
+        scale (float): Scale factor for saliency computation, typically 1/sqrt(head_dim).
         **kwargs: Additional keyword arguments from the forward pass.
     """
 
@@ -30,9 +31,10 @@ class SaliencyTrace:
         config: SaliencyConfig,
         input_ids: Int[Tensor, "B S"],
         pixel_values: Float[Tensor, "B C H W"] | None = None,
+        scale: float = 1.0,
         **kwargs,
     ):
-        self.scale = config.scale
+        self.scale = scale
         self.layout = TokenLayout(config, input_ids=input_ids, pixel_values=pixel_values, **kwargs)
 
         self.layer_reduce: Reduction = config.layer_reduce

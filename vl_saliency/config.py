@@ -11,8 +11,6 @@ class SaliencyConfig:
     """ID of token used for padding."""
     image_patch_fn: ImagePatchFunction
     """Function that infers shape from input."""
-    scale: float
-    """Scale utilized in saliency computation, typically 1/sqrt(head_dim)."""
     layer_reduce: Reduction = "mean"
     """Function to reduce saliency across layers (e.g., 'mean', 'max')."""
     layer_op: LayerOp | None = None

@@ -12,9 +12,6 @@ This library provides a simple, model-agnostic interface to compute and visualiz
 - [Installation](#installation)
 - [Features](#features)
 - [Attention and Gradients](#attention-and-gradients)
-- [Transforms](#transforms)
-- [Pipeline API](#pipeline-api)
-- [Defining Custom Transforms](#defining-custom-transforms)
 
 ## Installation
 

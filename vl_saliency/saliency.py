@@ -1,6 +1,7 @@
 import math
 from collections.abc import Callable
 from types import MethodType
+from typing import Any, Literal, overload
 
 from jaxtyping import Float, Int
 from torch import Tensor
@@ -71,9 +72,6 @@ class Saliency:
             else infer_image_patch_fn(model.config)
         )
 
-        head_dim = model.config.hidden_size // model.config.num_attention_heads
-        scale = 1.0 / math.sqrt(head_dim)
-
         self.config = SaliencyConfig(
             pad_token_id=pad_token_id,
             image_token_id=image_token_id,
@@ -83,11 +81,10 @@ class Saliency:
             head_reduce=head_reduce,
             head_op=head_op,
             backend=backend,
-            scale=scale,
         )
 
         self._prev_forward: Callable | None = None
-        self._prev_attn_implementation: str | None = None
+        self._prev_attn_impl: str | None = None
 
     @staticmethod
     def from_config(model: PreTrainedModel, config: SaliencyConfig) -> "Saliency":
@@ -112,7 +109,7 @@ class Saliency:
 
     def wrap(self):
         """Binds the custom attention implementation to the model for saliency extraction."""
-        if self._prev_forward is not None and self._prev_attn_implementation is not None:
+        if self._prev_forward is not None and self._prev_attn_impl is not None:
             return  # Already wrapped
 
         prev_forward = self.model.forward
@@ -146,21 +143,47 @@ class Saliency:
     def _build_saliency_forward(
         config: SaliencyConfig,
         attn_implementation: str,
-        forward: Callable[..., ModelOutput | tuple],
-    ) -> Callable[..., SaliencyOutput | tuple]:
+        forward: Callable[..., ModelOutput],
+    ) -> Callable[..., SaliencyOutput]:
         """Builds a custom forward method that creates a SaliencyTrace and passes it through the model's forward pass to compute saliency maps."""
+
+        @overload
+        def _saliency_forward(
+            model_self,
+            input_ids: Int[Tensor, "B S"],
+            pixel_values: Float[Tensor, "B C H W"] | None = None,
+            *,
+            return_dict: Literal[True] | None = None,
+            **kwargs,
+        ) -> SaliencyOutput: ...
+
+        @overload
+        def _saliency_forward(
+            model_self,
+            input_ids: Int[Tensor, "B S"],
+            pixel_values: Float[Tensor, "B C H W"] | None = None,
+            *,
+            return_dict: Literal[False],
+            **kwargs,
+        ) -> tuple[Any, ...]: ...
 
         def _saliency_forward(
             model_self,
             input_ids: Int[Tensor, "B S"],
             pixel_values: Float[Tensor, "B C H W"] | None = None,
+            *,
+            return_dict: bool | None = None,
             **kwargs,
-        ) -> SaliencyOutput | tuple:
+        ) -> SaliencyOutput | tuple[Any, ...]:
+
+            head_dim = model_self.config.hidden_size // model_self.config.num_attention_heads
+            scale = 1.0 / math.sqrt(head_dim)
 
             trace = kwargs.get("saliency") or SaliencyTrace(
                 config=config,
                 input_ids=input_ids,
                 pixel_values=pixel_values,
+                scale=scale,
             )
 
             kwargs["saliency"] = trace
@@ -168,7 +191,14 @@ class Saliency:
 
             out = forward(model_self, input_ids=input_ids, pixel_values=pixel_values, **kwargs)
 
-            if isinstance(out, tuple):
+            default_return_dict = (
+                model_self.config.return_dict if hasattr(model_self, "config") else True
+            )
+            return_dict = return_dict if return_dict is not None else default_return_dict
+            if not return_dict and not isinstance(out, tuple):
+                out = out.to_tuple()
+
+            if isinstance(out, tuple):  # return_dict=False
                 out = tuple(list(out) + [trace.saliency])
             else:
                 out = SaliencyOutput(base_output=out, saliency=trace.saliency)
