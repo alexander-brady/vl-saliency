@@ -5,7 +5,7 @@ import torch
 from torch import Tensor
 from transformers.utils.generic import ModelOutput
 
-from vl_saliency.outputs import SaliencyGrid, SaliencyOutput
+from vl_saliency.outputs import Index, SaliencyGrid, SaliencyOutput
 
 # ----- Fixtures -----
 
@@ -132,10 +132,10 @@ def test_saliency_grid_single_batch_multi_image(layout, tensor, mask):
     assert grid.num_images() == 2
     assert grid.num_tokens() == 6
 
-    m1 = grid.map(4, img_idx=0)
+    m1 = grid.map(0, 4)
     assert m1.shape == (2, 2)
     assert torch.equal(m1, torch.tensor([[20.0, 21.0], [22.0, 23.0]]))
-    m2 = grid.map(4, img_idx=1)
+    m2 = grid.map(1, 4)
     assert m2.shape == (1, 1)
 
     assert torch.equal(m2, torch.tensor([[24.0]]))
@@ -168,11 +168,11 @@ def test_saliency_multiple_batches_and_images(layout, tensor, mask):
     assert grid.num_tokens(0) == 6
     assert grid.num_tokens(1) == 4
 
-    m00 = grid.map(4, batch_idx=0, img_idx=0)
+    m00 = grid.map(0, 0, 4)  # batch 0, image 0, token 4
     assert m00.shape == (2, 2)
     assert torch.equal(m00, torch.tensor([[16.0, 17.0], [18.0, 19.0]]))
 
-    m10 = grid.map(3, batch_idx=1, img_idx=0)
+    m10 = grid.map(1, 0, 3)  # batch 1, image 0, token 3
     assert m10.shape == (1, 1)
     assert torch.equal(m10, torch.tensor([[36.0]]))
 
@@ -206,4 +206,31 @@ def test_saliency_grid_invalid_indices(layout, tensor, mask):
     with pytest.raises(IndexError):
         grid._validate_token_idx(0, 6)  # token index out of bounds
     with pytest.raises(IndexError):
-        grid[0, 0, 0, 0]  # type: ignore - invalid index format
+        grid[0, 0, 0, 0]
+
+
+# ----- Index tests -----
+
+
+def test_index_from_indices():
+    idx = Index.from_indices(4)
+    assert idx.batch_idx is None
+    assert idx.img_idx is None
+    assert idx.token_idx == 4
+
+    idx = Index.from_indices((1, 4))
+    assert idx.batch_idx is None
+    assert idx.img_idx == 1
+    assert idx.token_idx == 4
+
+    idx = Index.from_indices((0, 1, 4))
+    assert idx.batch_idx == 0
+    assert idx.img_idx == 1
+    assert idx.token_idx == 4
+
+    assert idx == Index.from_indices(idx)
+
+    with pytest.raises(IndexError):
+        Index.from_indices(())
+    with pytest.raises(IndexError):
+        Index.from_indices((1, 2, 3, 4))  # too many indices
