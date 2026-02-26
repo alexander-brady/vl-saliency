@@ -104,7 +104,7 @@ class SequenceLayout:
                     f"Number of images ({image_counts}) does not match number of input items ({batch_size})."
                 )
 
-            patch_shapes = image_patch_fn(
+            patch_shapes: list[list[tuple[int, int]]] = image_patch_fn(
                 batch_size=batch_size,
                 image_count=image_counts,
                 input_ids=input_ids,
@@ -117,7 +117,7 @@ class SequenceLayout:
                     f"Expected {batch_size} patch shape entries, got {len(patch_shapes)}."
                 )
         else:
-            patch_shapes: list[list[tuple[int, int]]] = [[] for _ in range(batch_size)]
+            patch_shapes = [[] for _ in range(batch_size)]
 
         return patch_shapes
 

@@ -42,6 +42,7 @@ class SaliencyAccumulator:
 
         self._resolve_qk_fn(config)
 
+        self._saliency: Float[Tensor, "B T_gen T_img"]
         self._init_saliency(
             shape=(self.layout.B, self.layout.T_gen, self.layout.T_img),
             device=input_ids.device,

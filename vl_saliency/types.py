@@ -1,3 +1,4 @@
+from collections.abc import Hashable
 from typing import Literal, ParamSpec, Protocol
 
 from jaxtyping import Bool, Float
@@ -49,7 +50,7 @@ class SaliencyQKFunction(Protocol):
     ) -> Float[Tensor, "B T_gen T_img"]: ...
 
 
-class HeadOp(Protocol):
+class HeadOp(Protocol, Hashable):
     """Operation to be applied to each head's saliency before aggregation. Must be pure.
 
     Args:
@@ -67,7 +68,7 @@ class HeadOp(Protocol):
     ) -> Float[Tensor, "B H T_gen T_img"]: ...
 
 
-class LayerOp(Protocol):
+class LayerOp(Protocol, Hashable):
     """Operation to be applied to each layer's saliency before aggregation. Must be pure.
 
     Args:
