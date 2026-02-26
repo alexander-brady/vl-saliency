@@ -1,3 +1,3 @@
-from .dispatcher import get_saliency_qk
+from .dispatcher import get_qk_accumulator
 
-__all__ = ["get_saliency_qk"]
+__all__ = ["get_qk_accumulator"]

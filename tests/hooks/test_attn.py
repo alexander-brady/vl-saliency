@@ -1,13 +1,10 @@
+import pytest
 import torch
 
-from vl_saliency.attn import saliency_attention
-from vl_saliency.trace import SaliencyTrace
+import vl_saliency.hooks.attn as m
+from vl_saliency.hooks.attn import attention_with_saliency
 
-# ------ Dummy implementations for testing ------
-
-
-class DummyModule(torch.nn.Module):
-    pass
+# ------ Dummy implementations ------
 
 
 class DummyAttentionFunctions:
@@ -22,32 +19,34 @@ def dummy_attention_forward(module, query, key, value, attention_mask, **kwargs)
     return query, torch.ones(1, 2, 3, 3)
 
 
-class DummyContext(SaliencyTrace):
-    def __init__(self, attn_implementation="dummy_attention"):
-        self.attn_implementation = attn_implementation
+@pytest.fixture
+def dummy_context():
+    class DummyContext:
+        def accumulate_qk(self, q, k):
+            self.qk_step_called = True
 
-    def accumulate_qk(self, q, k):
-        self.qk_step_called = True
-
-
-# ------ Test case for saliency_attention ------
+    return DummyContext()
 
 
-def test_saliency_attention(monkeypatch):
+# ------ Test case ------
+
+
+def test_saliency_attention(monkeypatch, build_model, dummy_context):
     monkeypatch.setattr(
-        "vl_saliency.attn.ALL_ATTENTION_FUNCTIONS",
+        m,
+        "ALL_ATTENTION_FUNCTIONS",
         DummyAttentionFunctions(dummy_attention_forward),
     )
-
-    ctx = DummyContext()
 
     q = torch.randn(1, 2, 3, 4)
     k = torch.randn(1, 2, 3, 4)
     v = torch.randn(1, 2, 3, 4)
     mask = torch.ones(1, 1, 3, 3)
 
-    output, weights = saliency_attention(
-        module=DummyModule(),
+    ctx = dummy_context
+
+    output, weights = attention_with_saliency(
+        module=build_model(),
         query=q,
         key=k,
         value=v,

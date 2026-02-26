@@ -4,7 +4,7 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
-from vl_saliency._types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
+from vl_saliency.types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
 
 from .reduce import _HEAD_REDUCE, _LAYER_REDUCE
 from .scores import _compute_scores

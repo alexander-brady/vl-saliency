@@ -1,58 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, is_dataclass
-from typing import NamedTuple, overload
+from typing import cast, overload
 
 from jaxtyping import Float
 from torch import Tensor
-from transformers.utils.generic import ModelOutput
 
-from vl_saliency.tokens import TokenLayout
-
-type index = int | tuple[int | None, ...] | Index
-
-
-class Index(NamedTuple):
-    """Structured index for accessing saliency maps."""
-
-    batch_idx: int | None = None
-    img_idx: int | None = None
-    token_idx: int | None = None
-
-    @classmethod
-    def from_indices(cls, idx: index) -> Index:
-        """Converts index formats into a structured Index object."""
-        if isinstance(idx, cls):
-            return idx
-
-        if isinstance(idx, int):
-            return cls(token_idx=idx)
-
-        if isinstance(idx, tuple):
-            if not 1 <= len(idx) <= 3:
-                raise IndexError("Expected 1 - 3 indices")
-
-            idx = (None,) * (3 - len(idx)) + idx
-            return cls(*idx)
-
-        raise TypeError("Index must be int, tuple[int, ...], or Index")
-
-
-@dataclass
-class SaliencyOutput(ModelOutput):
-    """Output wrapper for model outputs that includes the saliency map alongside the original model output.
-    Fields from the original model output can be accessed directly on this object,
-    and the saliency map is available as the `saliency` attribute."""
-
-    saliency: SaliencyGrid
-    """Saliency map computed during the forward pass."""
-    base_output: ModelOutput | None = None
-    """The original output from the model's forward pass."""
-
-    def __getattr__(self, name: str):
-        if is_dataclass(self.base_output) and name in self.base_output.__dataclass_fields__:
-            return getattr(self.base_output, name)
-        return super().__getattribute__(name)
+from vl_saliency.core.index import Index, IndexLike
+from vl_saliency.core.layout import SequenceLayout
 
 
 class SaliencyGrid:
@@ -68,7 +22,7 @@ class SaliencyGrid:
         image_maps(img_idx, batch_idx=None) → (T, H, W) saliency maps for all tokens for the specified image
     """
 
-    def __init__(self, tensor: Float[Tensor, "B T_gen T_img"], layout: TokenLayout):
+    def __init__(self, tensor: Float[Tensor, "B T_gen T_img"], layout: SequenceLayout):
         self._tensor = tensor
         self._layout = layout
 
@@ -110,7 +64,12 @@ class SaliencyGrid:
             torch.Tensor: The saliency map for the specified token and image, of shape (H, W) where H and W are the height and width of the image patch.
         """
         if isinstance(idx, int):
-            idx = Index.from_indices((idx,) + components)
+            if len(components) > 2:
+                raise IndexError(
+                    "Too many indices provided. Expected at most 3 (batch_idx, img_idx, token_idx)."
+                )
+            idx = Index.from_indices(cast(IndexLike, (idx,) + components))
+
         batch_idx, img_idx, token_idx = self._validate_index(idx)
 
         H, W = self._layout.patch_shapes[batch_idx][img_idx]
@@ -140,7 +99,7 @@ class SaliencyGrid:
         flat = self._tensor[batch_idx, :n_tokens, start : start + H * W]  # [n_tokens, H * W]
         return flat.view(n_tokens, H, W)
 
-    def __getitem__(self, idx: index) -> Float[Tensor, "H W"]:
+    def __getitem__(self, idx: IndexLike) -> Float[Tensor, "H W"]:
         """
         Direct indexing to retrieve the saliency map.
 
@@ -178,21 +137,21 @@ class SaliencyGrid:
             )
         return img_idx
 
-    def _validate_token_idx(self, batch_idx: int, token_idx: int | None) -> int:
+    def _validate_token_idx(self, batch_idx: int, token_idx: int) -> int:
         """Validates the token index for the given batch index."""
         num_tokens = self.num_tokens(batch_idx)
-        if token_idx is None:
-            raise IndexError("Token index must be specified.")
         if token_idx < 0 or token_idx >= num_tokens:
             raise IndexError(
                 f"Token index {token_idx} is out of bounds for batch index {batch_idx} with {num_tokens} tokens."
             )
         return token_idx
 
-    def _validate_index(self, index: index) -> tuple[int, int, int]:
+    def _validate_index(self, index: IndexLike) -> tuple[int, int, int]:
         """Validates and returns the batch index, image index, and token index."""
         index = Index.from_indices(index)
         batch_idx = self._validate_batch_idx(index.batch_idx)
         img_idx = self._validate_img_idx(batch_idx, index.img_idx)
+        if index.token_idx is None:
+            raise IndexError("Token index must be specified.")
         token_idx = self._validate_token_idx(batch_idx, index.token_idx)
         return batch_idx, img_idx, token_idx

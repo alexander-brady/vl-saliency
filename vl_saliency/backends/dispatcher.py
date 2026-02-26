@@ -2,9 +2,9 @@ from functools import cache
 
 import torch
 
-from vl_saliency._types import Backend, HeadOp, LayerOp, Reduction, SaliencyQKFunction
 from vl_saliency.backends.torch import saliency_qk_compiled, saliency_qk_eager
-from vl_saliency.utils.logger import get_logger
+from vl_saliency.types import Backend, HeadOp, LayerOp, Reduction, SaliencyQKFunction
+from vl_saliency.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
@@ -19,7 +19,7 @@ def assign_auto(device: torch.device) -> Backend:
 
 
 @cache
-def get_saliency_qk(
+def get_qk_accumulator(
     backend: Backend,
     head_reduce: Reduction,
     layer_reduce: Reduction,
@@ -44,7 +44,9 @@ def get_saliency_qk(
             device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             selected_backend = assign_auto(device)
             logger.info(f"Auto-selected backend: {selected_backend} (device: {device})")
-            return get_saliency_qk(selected_backend, head_reduce, layer_reduce, head_op, layer_op)
+            return get_qk_accumulator(
+                selected_backend, head_reduce, layer_reduce, head_op, layer_op
+            )
 
 
 @cache

@@ -4,17 +4,17 @@ import torch
 from jaxtyping import Float, Int
 from torch import Tensor
 
-from vl_saliency._types import Reduction
-from vl_saliency.backends.dispatcher import assign_auto, get_saliency_qk
-from vl_saliency.config import SaliencyConfig
-from vl_saliency.outputs import SaliencyGrid
-from vl_saliency.tokens import TokenLayout
-from vl_saliency.utils.logger import get_logger
+from vl_saliency.api.config import SaliencyConfig
+from vl_saliency.backends.dispatcher import assign_auto, get_qk_accumulator
+from vl_saliency.core.grid import SaliencyGrid
+from vl_saliency.core.layout import SequenceLayout
+from vl_saliency.types import Reduction
+from vl_saliency.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-class SaliencyTrace:
+class SaliencyAccumulator:
     """
     Holds necessary information for saliency extraction during the forward pass, including token layout and accumulated saliency map.
 
@@ -22,7 +22,6 @@ class SaliencyTrace:
         config (SaliencyConfig): The configuration object containing parameters for saliency extraction.
         input_ids (torch.Tensor): The input token IDs for the batch, used to identify image and generated tokens.
         pixel_values (torch.Tensor | None): The input pixel values for the batch, used for dynamic patch shape inference if needed.
-        scale (float): Scale factor for saliency computation, typically 1/sqrt(head_dim).
         **kwargs: Additional keyword arguments from the forward pass.
     """
 
@@ -31,12 +30,13 @@ class SaliencyTrace:
         config: SaliencyConfig,
         input_ids: Int[Tensor, "B S"],
         pixel_values: Float[Tensor, "B C H W"] | None = None,
-        scale: float = 1.0,
         **kwargs,
     ):
-        self.scale = scale
-        self.layout = TokenLayout(config, input_ids=input_ids, pixel_values=pixel_values, **kwargs)
+        self.layout = SequenceLayout(
+            config, input_ids=input_ids, pixel_values=pixel_values, **kwargs
+        )
 
+        self.attn_scale = config.attn_scale
         self.layer_reduce: Reduction = config.layer_reduce
         self.layers_accumulated = 0
 
@@ -59,31 +59,15 @@ class SaliencyTrace:
     def accumulate_qk(self, q: Float[Tensor, "B Hq T D"], k: Float[Tensor, "B Hkv T D"]):
         """Accumulates saliency contributions from the given query and key tensors for the current layer, updating the map."""
         self.layers_accumulated += 1
-        self._saliency = self._saliency_qk_fn(
+        self._saliency = self._qk_accumulator(
             q,
             k,
             gen_idx=self.layout.gen_token_idx,
             gen_mask=self.layout.gen_mask,
             img_idx=self.layout.img_token_idx,
             img_mask=self.layout.img_mask,
-            scale=self.scale,
+            scale=self.attn_scale,
             saliency=self._saliency,
-        )
-
-    def _resolve_qk_fn(self, config: SaliencyConfig):
-        """Initializes the backend function for saliency accumulation."""
-        if config.backend == "auto":
-            backend = assign_auto(self.layout.device)
-            logger.info_once(f"Auto-assigned backend '{backend}'.")
-        else:
-            backend = config.backend
-
-        self._saliency_qk_fn = get_saliency_qk(
-            backend=backend,
-            head_reduce=config.head_reduce,
-            layer_reduce=config.layer_reduce,
-            head_op=config.head_op,
-            layer_op=config.layer_op,
         )
 
     def _init_saliency(self, shape: tuple[int, int, int], device: torch.device, dtype: torch.dtype):
@@ -97,5 +81,19 @@ class SaliencyTrace:
                 self._saliency = torch.full(shape, float("inf"), device=device, dtype=dtype)
             case "prod":
                 self._saliency = torch.ones(shape, device=device, dtype=dtype)
-            case _:
-                raise ValueError(f"Unsupported layer_reduce method: {self.layer_reduce}")
+
+    def _resolve_qk_fn(self, config: SaliencyConfig):
+        """Initializes the backend function for saliency accumulation."""
+        if config.backend == "auto":
+            backend = assign_auto(self.layout.device)
+            logger.info_once(f"Auto-assigned backend '{backend}'.")
+        else:
+            backend = config.backend
+
+        self._qk_accumulator = get_qk_accumulator(
+            backend=backend,
+            head_reduce=config.head_reduce,
+            layer_reduce=config.layer_reduce,
+            head_op=config.head_op,
+            layer_op=config.layer_op,
+        )

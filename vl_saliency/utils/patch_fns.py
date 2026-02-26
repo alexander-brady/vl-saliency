@@ -3,7 +3,7 @@ from torch import Tensor
 
 
 # TODO: Align with multiple images per input. Currently, all items in the batch must have one image for this to work.
-class StaticPatches:
+class FixedPatchLayout:
     """Returns static patch shapes for all images."""
 
     def __init__(self, height: int, width: int):

@@ -6,17 +6,17 @@ from torch import Tensor
 from transformers.integrations.sdpa_attention import sdpa_attention_forward
 from transformers.modeling_utils import ALL_ATTENTION_FUNCTIONS
 
-from vl_saliency.trace import SaliencyTrace
+from vl_saliency.core.accum import SaliencyAccumulator
 
 
-def saliency_attention(
+def attention_with_saliency(
     module: torch.nn.Module,
     query: Float[Tensor, "B Hq T D_head"],
     key: Float[Tensor, "B Hkv T D_head"],
     value: Float[Tensor, "B Hkv T D_head"],
     attention_mask: Float[Tensor, "B 1 T T"] | None,
     attn_implementation: str,
-    saliency: SaliencyTrace,
+    saliency: SaliencyAccumulator,
     **kwargs,
 ) -> tuple[Float[Tensor, "B Hq T D_head"], Float[Tensor, "B Hq T T"] | None]:
     """Compute attention output and weights,
@@ -29,7 +29,7 @@ def saliency_attention(
         value (torch.Tensor): The value tensor of shape (batch_size, num_heads, seq_len_v, head_dim).
         attention_mask (torch.Tensor | None): The attention mask tensor of shape (batch_size, 1, seq_len_q, seq_len_k) or None.
         attn_implementation (str): The attention implementation being used.
-        saliency (SaliencyTrace): The saliency trace object used to compute and update the saliency map.
+        saliency (SaliencyAccumulator): The saliency accumulator object used to compute and update the saliency map.
 
     Returns:
         tuple[torch.Tensor, torch.Tensor | None]: A tuple containing the attention output tensor and the attention weights tensor (or None if not returned by the attention implementation).

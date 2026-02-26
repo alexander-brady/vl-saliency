@@ -63,6 +63,5 @@ ignore_missing_imports = true
 omit = [
     "vl_saliency/_version.py",
     "*/__init__.py",
-    "vl_saliency/_types.py",
-    "vl_saliency/config.py",
+    "vl_saliency/types.py",
 ]

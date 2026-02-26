@@ -1,20 +1,20 @@
 import pytest
 import torch
 
-from vl_saliency.utils.patch_fns import StaticPatches, image_thw_to_patches
+from vl_saliency.utils.patch_fns import FixedPatchLayout, image_thw_to_patches
 
 # ------ Test StaticPatches ------
 
 
 def test_static_patches_single_image():
-    sp = StaticPatches(height=16, width=32)
+    sp = FixedPatchLayout(height=16, width=32)
     result = sp(batch_size=1, image_count=1)
 
     assert result == [[(16, 32)]]
 
 
 def test_static_patches_zero_images():
-    sp = StaticPatches(height=4, width=4)
+    sp = FixedPatchLayout(height=4, width=4)
     result = sp(batch_size=2, image_count=0)
 
     assert result == [

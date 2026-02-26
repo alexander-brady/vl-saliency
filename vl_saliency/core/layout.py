@@ -2,11 +2,11 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
-from vl_saliency._types import ImagePatchFunction
-from vl_saliency.config import SaliencyConfig
+from vl_saliency.api.config import SaliencyConfig
+from vl_saliency.types import ImagePatchFunction
 
 
-class TokenLayout:
+class SequenceLayout:
     """Computes token layout information useful for saliency extraction.
 
     Args:
@@ -27,9 +27,9 @@ class TokenLayout:
         self.device = input_ids.device
         self.B, self.S = input_ids.shape
 
-        is_img, is_gen = self._img_gen_masks(input_ids, config.pad_token_id, config.image_token_id)
-        self.img_token_idx, self.img_mask, self.T_img = self._compact(is_img)
-        self.gen_token_idx, self.gen_mask, self.T_gen = self._compact(is_gen)
+        is_img, is_gen = self._build_masks(input_ids, config.pad_token_id, config.image_token_id)
+        self.img_token_idx, self.img_mask, self.T_img = self._compact_mask_indices(is_img)
+        self.gen_token_idx, self.gen_mask, self.T_gen = self._compact_mask_indices(is_gen)
 
         self.patch_shapes = self._patch_shapes(
             config.image_patch_fn, input_ids, pixel_values, **kwargs
@@ -37,7 +37,7 @@ class TokenLayout:
         self.image_token_offsets = self._image_offsets(self.patch_shapes)
 
     @staticmethod
-    def _img_gen_masks(input_ids: Int[Tensor, "B S"], pad_token_id: int, image_token_id: int):
+    def _build_masks(input_ids: Int[Tensor, "B S"], pad_token_id: int, image_token_id: int):
         """Masks to identify image and generated tokens in the input sequences, while minimizing padding."""
         device = input_ids.device
         _, S = input_ids.shape
@@ -60,7 +60,9 @@ class TokenLayout:
         return is_img, is_gen
 
     @staticmethod
-    def _compact(mask: Bool[Tensor, "B S"]) -> tuple[Int[Tensor, "B T"], Bool[Tensor, "B T"], int]:
+    def _compact_mask_indices(
+        mask: Bool[Tensor, "B S"],
+    ) -> tuple[Int[Tensor, "B T"], Bool[Tensor, "B T"], int]:
         """Compacts the mask to minimize padding, returning new lengths and a compacted mask."""
         device = mask.device
         counts = mask.sum(dim=1)  # [B]
@@ -88,7 +90,7 @@ class TokenLayout:
     @staticmethod
     def _patch_shapes(
         image_patch_fn: ImagePatchFunction,
-        input_ids: Float[Tensor, "B S"],
+        input_ids: Int[Tensor, "B S"],
         pixel_values: Float[Tensor, "B C H W"] | None = None,
         **kwargs,
     ) -> list[list[tuple[int, int]]]:

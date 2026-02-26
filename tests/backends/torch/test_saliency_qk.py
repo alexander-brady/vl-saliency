@@ -6,7 +6,7 @@ import vl_saliency.backends.torch.saliency_qk as m
 def test_saliency_qk_eager(monkeypatch):
     B, Hq, Hkv, T, T_gen, T_img, D = 2, 3, 3, 5, 4, 6, 8
 
-    # --- mock internals ---
+    # -------mock internals ---
     monkeypatch.setattr(
         m,
         "_compute_scores",
@@ -31,7 +31,7 @@ def test_saliency_qk_eager(monkeypatch):
     def dummy_layer_op(scores, mask):
         return scores * 3
 
-    # --- build function ---
+    # -------build function ---
     fn = m.saliency_qk_eager(
         head_reduce="sum",
         layer_reduce="add",
@@ -39,7 +39,7 @@ def test_saliency_qk_eager(monkeypatch):
         layer_op=dummy_layer_op,
     )
 
-    # --- inputs ---
+    # -------inputs ---
     q = torch.randn(B, Hq, T, D)
     k = torch.randn(B, Hkv, T, D)
     gen_idx = torch.zeros(B, T_gen, dtype=torch.long)

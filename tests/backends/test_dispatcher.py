@@ -11,7 +11,7 @@ import vl_saliency.backends.dispatcher as m
 
 @pytest.fixture(autouse=True)
 def clear_cache():
-    m.get_saliency_qk.cache_clear()
+    m.get_qk_accumulator.cache_clear()
     m._is_triton_available.cache_clear()
 
 
@@ -25,13 +25,13 @@ def triton_available(monkeypatch):
     monkeypatch.setitem(sys.modules, "triton.language", fake_language)
 
 
-# ----- Test cases for get_saliency_qk -----
+# -------Test cases for get_saliency_qk -----
 
 
 def test_torch_backend(monkeypatch):
     # Mock the compiled function to test that it's returned
     monkeypatch.setattr(m, "saliency_qk_compiled", lambda *args, **kwargs: "compiled")
-    fn = m.get_saliency_qk(
+    fn = m.get_qk_accumulator(
         "torch", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )
     assert fn == "compiled"
@@ -44,7 +44,7 @@ def test_triton_backend(triton_available, monkeypatch):
         pytest.skip("Triton not available")
 
     monkeypatch.setattr(t, "saliency_qk", lambda *args, **kwargs: "triton")
-    fn = m.get_saliency_qk(
+    fn = m.get_qk_accumulator(
         "triton", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )
     assert fn == "triton"
@@ -52,7 +52,7 @@ def test_triton_backend(triton_available, monkeypatch):
 
 def test_torch_eager_backend(monkeypatch):
     monkeypatch.setattr(m, "saliency_qk_eager", lambda *args, **kwargs: "eager")
-    fn = m.get_saliency_qk(
+    fn = m.get_qk_accumulator(
         "torch_eager", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )
     assert fn == "eager"
@@ -61,7 +61,7 @@ def test_torch_eager_backend(monkeypatch):
     monkeypatch.setattr(
         m, "saliency_qk_compiled", lambda *args, **kwargs: (_ for _ in ()).throw(Exception())
     )
-    fn = m.get_saliency_qk(
+    fn = m.get_qk_accumulator(
         "torch", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )
     assert fn == "eager"
@@ -70,7 +70,7 @@ def test_torch_eager_backend(monkeypatch):
 def test_torch_auto_backend(monkeypatch):
     monkeypatch.setattr(m, "assign_auto", lambda device: "torch_eager")
     monkeypatch.setattr(m, "saliency_qk_eager", lambda *args, **kwargs: "eager")
-    fn = m.get_saliency_qk(
+    fn = m.get_qk_accumulator(
         "auto", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )
     assert fn == "eager"

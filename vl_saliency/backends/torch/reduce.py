@@ -5,7 +5,7 @@ import torch
 from jaxtyping import Bool, Float
 from torch import Tensor
 
-from vl_saliency._types import Reduction
+from vl_saliency.types import Reduction
 
 
 def _reduce_mean(

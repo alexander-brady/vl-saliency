@@ -1,21 +1,21 @@
 import logging
 
-import vl_saliency.utils.logger as m
+import vl_saliency.utils.logging as m
 
 
-def test_default_log_level(monkeypatch):
+def test_logger_default_log_level(monkeypatch):
     monkeypatch.delenv(m.ENV_LOG_LEVEL_KEY, raising=False)
     logger = m.get_logger("test_default")
     assert logger.level == logging.INFO
 
 
-def test_env_log_level_override(monkeypatch):
+def test_logger_env_log_level_override(monkeypatch):
     monkeypatch.setenv(m.ENV_LOG_LEVEL_KEY, "debug")
     logger = m.get_logger("test_env")
     assert logger.level == logging.DEBUG
 
 
-def test_warning_once_logs_once(caplog):
+def test_logger_warning_once(caplog):
     logger = m.get_logger("test_warning_once")
     with caplog.at_level(logging.WARNING):
         logger.warning_once("hello")
@@ -25,7 +25,7 @@ def test_warning_once_logs_once(caplog):
     assert caplog.records[0].message == "hello"
 
 
-def test_info_once_logs_once(caplog):
+def test_logger_info_once(caplog):
     logger = m.get_logger("test_info_once")
     with caplog.at_level(logging.INFO):
         logger.info_once("hello")

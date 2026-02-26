@@ -3,7 +3,7 @@ import torch
 
 from vl_saliency.backends.torch.scores import _compute_scores
 
-# ----- Reference implementation for testing _compute_scores -----
+# -------Reference implementation for testing _compute_scores -----
 
 
 def manual_scores(q, k, gen_idx, img_idx, scale):
@@ -28,7 +28,7 @@ def manual_scores(q, k, gen_idx, img_idx, scale):
     return out * scale
 
 
-# ----- Test standard attention (Hq == Hkv) -----
+# -------Test standard attention (Hq == Hkv) -----
 
 
 def test_compute_scores_standard_attention_matches_manual():
@@ -48,7 +48,7 @@ def test_compute_scores_standard_attention_matches_manual():
     assert torch.allclose(scores, expected, atol=1e-6)
 
 
-# ----- Behavior tests -----
+# -------Behavior tests -----
 
 
 def test_compute_scores_applies_scale():
@@ -78,7 +78,7 @@ def test_compute_scores_clamps_negative_indices():
     assert scores.item() == expected.item()
 
 
-# ----- Test Grouped-query attention (Hq != Hkv) -----
+# -------Test Grouped-query attention (Hq != Hkv) -----
 
 
 def test_compute_scores_grouped_query_attention():

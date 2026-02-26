@@ -1,4 +1,4 @@
-from vl_saliency._types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
+from vl_saliency.types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
 
 
 def saliency_qk(
