@@ -91,10 +91,10 @@ def test_one_batch_one_image(build_sample_grid):
     assert grid.num_tokens() == grid.num_tokens(0) == 3
 
     assert grid.map(0).shape == (2, 2)
-    assert grid.image_maps(0).shape == (3, 2, 2)
+    assert grid.maps_for_image().shape == (3, 2, 2)
 
     assert grid._validate_batch_idx(None) == 0
-    assert grid._validate_img_idx(None, 0) == 0
+    assert grid._validate_image_idx(None, 0) == 0
 
 
 def test_one_batch_multiple_images(build_sample_grid):
@@ -110,6 +110,7 @@ def test_one_batch_multiple_images(build_sample_grid):
 
     assert grid.map(0, 0).shape == (2, 2)
     assert grid.map(1, 0).shape == (3, 3)
+    assert grid.maps_for_image(1).shape == (5, 3, 3)
 
 
 def test_multiple_batches_multiple_images(build_sample_grid):
@@ -133,6 +134,9 @@ def test_multiple_batches_multiple_images(build_sample_grid):
     assert grid.map(0, 0, 0).shape == (2, 2)
     assert grid.map(0, 1, 0).shape == (3, 3)
 
+    assert grid.maps_for_image(0, 0).shape == (5, 2, 2)
+    assert grid.maps_for_image(1, 0).shape == (2, 1, 1)
+
 
 # ------- Test Indices -------
 
@@ -154,7 +158,7 @@ def test_accepts_different_index_formats(build_sample_grid):
     assert torch.equal(grid.map(0, 0, 0), grid[0, 0, 0])
 
     # Using Index object
-    index = Index(batch_idx=0, img_idx=0, token_idx=0)
+    index = Index(batch_idx=0, image_idx=0, token_idx=0)
     assert torch.equal(grid.map(index), grid[0, 0, 0])
 
 
@@ -178,10 +182,10 @@ def test_invalid_indices(build_sample_grid):
         grid._validate_batch_idx(2)  # Invalid batch index
 
     with pytest.raises(IndexError):
-        grid._validate_img_idx(0, None)  # Ambiguous image index with multiple images in batch
+        grid._validate_image_idx(0, None)  # Ambiguous image index with multiple images in batch
 
     with pytest.raises(IndexError):
-        grid._validate_img_idx(0, 2)  # Invalid image index for batch 0
+        grid._validate_image_idx(0, 2)  # Invalid image index for batch 0
 
     with pytest.raises(IndexError):
         grid._validate_token_idx(0, -1)  # Invalid token index for batch 0
@@ -190,5 +194,5 @@ def test_invalid_indices(build_sample_grid):
         grid._validate_token_idx(0, 5)  # Invalid token index for batch 0 (only 3 tokens)
 
     with pytest.raises(IndexError):
-        index = Index(batch_idx=0, img_idx=0, token_idx=None)
+        index = Index(batch_idx=0, image_idx=0, token_idx=None)
         grid._validate_index(index)  # Token index must be specified

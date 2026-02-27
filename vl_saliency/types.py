@@ -50,7 +50,7 @@ class SaliencyQKFunction(Protocol):
     ) -> Float[Tensor, "B T_gen T_img"]: ...
 
 
-class HeadOp(Protocol, Hashable):
+class HeadOp(Hashable, Protocol):
     """Operation to be applied to each head's saliency before aggregation. Must be pure.
 
     Args:
@@ -68,7 +68,7 @@ class HeadOp(Protocol, Hashable):
     ) -> Float[Tensor, "B H T_gen T_img"]: ...
 
 
-class LayerOp(Protocol, Hashable):
+class LayerOp(Hashable, Protocol):
     """Operation to be applied to each layer's saliency before aggregation. Must be pure.
 
     Args:

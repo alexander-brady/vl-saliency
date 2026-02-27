@@ -10,7 +10,7 @@ class Index(NamedTuple):
 
     batch_idx: int | None = None
     """Which batch item to access. None only if there is a single batch item."""
-    img_idx: int | None = None
+    image_idx: int | None = None
     """Which image to access. None only if there is a single image in all batch items."""
     token_idx: int | None = None
     """Which token to access."""
