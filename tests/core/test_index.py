@@ -1,3 +1,5 @@
+import pytest
+
 from vl_saliency.core.index import Index
 
 
@@ -25,3 +27,13 @@ def test_index_from_indices():
     idx5 = (0, 2, 4)
     expected5 = Index(batch_idx=0, image_idx=2, token_idx=4)
     assert Index.from_indices(idx5) == expected5
+
+    # Test with an invalid tuple (too many elements)
+    idx6 = (1, 2, 3, 4)
+    with pytest.raises(IndexError):
+        Index.from_indices(idx6)  # Too many elements in the tuple
+
+    # Test None values are removed and padded
+    idx7 = (None, 1, None)
+    expected7 = Index(batch_idx=None, image_idx=None, token_idx=1)
+    assert Index.from_indices(idx7) == expected7 == Index.from_indices((1,))

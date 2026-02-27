@@ -16,7 +16,7 @@ class Index(NamedTuple):
     """Which token to access."""
 
     @classmethod
-    def from_indices(cls, idx: IndexLike) -> Index:
+    def from_indices(cls, idx: IndexLike | tuple[int | None, ...]) -> Index:
         """Converts index formats into a structured Index object."""
         if isinstance(idx, cls):
             return idx
@@ -25,5 +25,10 @@ class Index(NamedTuple):
             return cls(token_idx=idx)
 
         if isinstance(idx, tuple):
+            # Remove trailing Nones and pad with Nones to ensure we have exactly 3 components
+            idx = tuple(i for i in idx if i is not None)
+            if len(idx) > 3:
+                raise IndexError(f"Too many components in index tuple: {idx}")
+
             padded = (None,) * (3 - len(idx)) + idx
             return cls(*padded)
