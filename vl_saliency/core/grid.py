@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import Literal, overload
 
-from jaxtyping import Float
+from jaxtyping import Float, Int
 from torch import Tensor
+from transformers import ProcessorMixin
 
 from vl_saliency.core.index import Index, IndexLike
 from vl_saliency.core.layout import SequenceLayout
+from vl_saliency.core.scoped import ScopedSaliencyGrid
 
 
 class SaliencyGrid:
@@ -116,6 +118,52 @@ class SaliencyGrid:
         start = self._layout.image_token_offsets[batch_idx][image_idx]
         flat = self._tensor[batch_idx, :n_tokens, start : start + H * W]  # [n_tokens, H * W]
         return flat.view(n_tokens, H, W)
+
+    @overload
+    def scope(
+        self,
+        idx: Index,
+        /,
+        *,
+        input_ids: Int[Tensor, "B T"] | Int[Tensor, " T"] | None = None,
+        processor: ProcessorMixin | None = None,
+    ) -> ScopedSaliencyGrid: ...
+    @overload
+    def scope(
+        self,
+        c1: int,
+        c2: int | None = None,
+        /,
+        *,
+        input_ids: Int[Tensor, "B T"] | Int[Tensor, " T"] | None = None,
+        processor: ProcessorMixin | None = None,
+    ) -> ScopedSaliencyGrid: ...
+    @overload
+    def scope(
+        self,
+        /,
+        *,
+        batch_idx: int | None = None,
+        image_idx: int | None = None,
+        input_ids: Int[Tensor, "B T"] | Int[Tensor, " T"] | None = None,
+        processor: ProcessorMixin | None = None,
+    ) -> ScopedSaliencyGrid: ...
+
+    def scope(
+        self,
+        *args,
+        input_ids: Int[Tensor, "B T"] | Int[Tensor, " T"] | None = None,
+        processor: ProcessorMixin | None = None,
+        **kwargs,
+    ) -> ScopedSaliencyGrid:
+        """
+        Creates a ScopedSaliencyGrid for the specified batch and image index,
+        which provides convenient access to saliency maps within that scope.
+        """
+        batch_idx, image_idx, _ = self._normalize_idx_input(*args, expect_token=False, **kwargs)
+        return ScopedSaliencyGrid(
+            self, batch_idx=batch_idx, image_idx=image_idx, input_ids=input_ids, processor=processor
+        )
 
     def __getitem__(self, idx: IndexLike) -> Float[Tensor, "H W"]:
         """

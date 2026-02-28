@@ -1,83 +1,9 @@
-from dataclasses import dataclass
-
 import pytest
 import torch
 
-from vl_saliency.core.grid import SaliencyGrid
 from vl_saliency.core.index import Index
-from vl_saliency.core.layout import SequenceLayout
 
-# ------- Helper classes and fixtures for testing -------
-
-
-@dataclass
-class ImageSpec:
-    start: int
-    size: tuple[int, int]
-
-
-class DummyLayout(SequenceLayout):
-    def __init__(
-        self,
-        B: int,
-        patch_shapes: list[list[tuple[int, int]]],
-        image_token_offsets: list[list[int]],
-        gen_mask: torch.Tensor,
-    ):
-        self.B = B
-        self.patch_shapes = patch_shapes
-        self.image_token_offsets = image_token_offsets
-        self.gen_mask = gen_mask
-
-
-@pytest.fixture
-def build_sample_grid():
-    """
-    Builds SaliencyGrids as follows:
-    Batch 0:
-        Image 0: starts at 0, size (2, 2) → occupies indices [0, 4)
-        Image 1: starts at 4, size (3, 3) → occupies indices [4, 13)
-        Gen tokens: 5 → token indices [0, 5)
-    Batch 1:
-        Image 0: starts at 0, size (1, 1) → occupies indices [0, 1)
-        Gen tokens: 2 → token indices [0, 2)
-    Tensor:
-        Shape: (B=2, T_gen=5, T_img=13) → accommodates all tokens and image patches
-        Values: Sequential integers for easy verification
-    """
-
-    def _build(
-        batch_size: int, images: list[list[ImageSpec]], gen_tokens: list[int]
-    ) -> SaliencyGrid:
-        max_gen_tokens = max(gen_tokens)
-
-        lowest_start = min((spec.start for batch in images for spec in batch), default=0)
-        highest_end = max(
-            (spec.start + spec.size[0] * spec.size[1] for batch in images for spec in batch),
-            default=0,
-        )
-
-        tensor_shape = (batch_size, max_gen_tokens, highest_end - lowest_start)
-        tensor = torch.arange(
-            tensor_shape[0] * tensor_shape[1] * tensor_shape[2],
-            dtype=torch.float32,
-        ).reshape(tensor_shape)
-
-        layout = DummyLayout(
-            B=batch_size,
-            patch_shapes=[[spec.size for spec in batch] for batch in images],
-            image_token_offsets=[[spec.start for spec in batch] for batch in images],
-            gen_mask=torch.tensor(
-                [
-                    [1] * num_tokens + [0] * (max_gen_tokens - num_tokens)
-                    for num_tokens in gen_tokens
-                ]
-            ),
-        )
-        return SaliencyGrid(tensor=tensor, layout=layout)
-
-    return _build
-
+from ..utils import ImageSpec
 
 # ------- Test Access Patterns -------
 
