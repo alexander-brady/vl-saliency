@@ -63,7 +63,14 @@ class SequenceLayout:
     def _compact_mask_indices(
         mask: Bool[Tensor, "B S"],
     ) -> tuple[Int[Tensor, "B T"], Bool[Tensor, "B T"], int]:
-        """Compacts the mask to minimize padding, returning new lengths and a compacted mask."""
+        """
+        Compacts the mask to minimize padding, returning new lengths and a compacted mask.
+
+        Returns:
+        - indices: Tensor of shape [B, T] containing the original indices of the masked tokens, padded with -1.
+        - out_mask: Boolean tensor of shape [B, T] indicating valid token positions (True for valid tokens, False for padding).
+        - T: The maximum number of valid tokens across the batch after compaction.
+        """
         device = mask.device
         counts = mask.sum(dim=1)  # [B]
 

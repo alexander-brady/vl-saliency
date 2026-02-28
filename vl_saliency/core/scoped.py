@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from jaxtyping import Float, Int
 from torch import Tensor
-from transformers import ProcessorMixin
+from transformers import PreTrainedTokenizerBase, ProcessorMixin
 
 if TYPE_CHECKING:
     from vl_saliency.core.grid import SaliencyGrid
@@ -39,7 +39,7 @@ class ScopedSaliencyGrid:
         batch_idx: int | None = None,
         image_idx: int | None = None,
         input_ids: Int[Tensor, "B T"] | Int[Tensor, " T"] | None = None,
-        processor: ProcessorMixin | None = None,
+        processor: ProcessorMixin | PreTrainedTokenizerBase | None = None,
     ):
         self.batch_idx, self.image_idx, _ = saliency_grid._normalize_idx_input(
             batch_idx=batch_idx, image_idx=image_idx
@@ -52,23 +52,28 @@ class ScopedSaliencyGrid:
             else input_ids
         )
 
-        self._tok = (
+        self._tok: PreTrainedTokenizerBase | None = (
             processor.tokenizer  # type: ignore[attr-defined]
             if hasattr(processor, "tokenizer")
-            else None
+            else processor
         )
+
+    @cached_property
+    def _gen_indices(self) -> Int[Tensor, " T"]:
+        """Token indices of generated tokens for the scoped image."""
+        indices = self.saliency_grid._layout.gen_token_idx[self.batch_idx]  # [S]
+        gen_mask = self.saliency_grid._layout.gen_mask[self.batch_idx].bool()  # [S]
+        return indices[gen_mask]  # [T_gen]
 
     @cached_property
     def gen_start_idx(self) -> int:
         """Starting index of generated tokens for the scoped image."""
-        self.saliency_grid._layout.gen_token_idx[self.batch_idx].min()
-        return int(self.saliency_grid._layout.gen_token_idx[self.batch_idx].min().item())
+        return int(self._gen_indices.min().item())
 
     @cached_property
     def gen_end_idx(self) -> int:
         """Ending index of generated tokens for the scoped image."""
-        self.saliency_grid._layout.gen_token_idx[self.batch_idx].max()
-        return int(self.saliency_grid._layout.gen_token_idx[self.batch_idx].max().item()) + 1
+        return int(self._gen_indices.max().item()) + 1
 
     @cached_property
     def num_tokens(self) -> int:
@@ -80,17 +85,14 @@ class ScopedSaliencyGrid:
         """Generated token IDs for the scoped image."""
         if self.input_ids is None:
             raise ValueError("Input IDs are required to access generated tokens.")
-
-        gen_idx = self.saliency_grid._layout.gen_token_idx[self.batch_idx]
-        return self.input_ids[gen_idx]
+        return self.input_ids[self._gen_indices]  # [T_gen]
 
     @cached_property
     def decoded_input_tokens(self) -> list[str]:
         """Decoded input tokens for the scoped image."""
         if self.input_ids is None or self._tok is None:
             raise ValueError("Input IDs and tokenizer are required to decode tokens.")
-
-        return self._tok.convert_ids_to_tokens(self.input_ids.tolist())
+        return self._tok.convert_ids_to_tokens(self.input_ids.tolist())  # type: ignore[union-attr]
 
     @cached_property
     def decoded_gen_tokens(self) -> list[str]:
@@ -98,7 +100,7 @@ class ScopedSaliencyGrid:
         if self.input_ids is None or self._tok is None:
             raise ValueError("Input IDs and tokenizer are required to decode tokens.")
 
-        return self._tok.convert_ids_to_tokens(self.gen_tokens.tolist())
+        return self._tok.convert_ids_to_tokens(self.gen_tokens.tolist())  # type: ignore[union-attr]
 
     @property
     def maps(self) -> Float[Tensor, "T H W"]:

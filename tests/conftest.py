@@ -34,6 +34,26 @@ def build_config():
     return _mk
 
 
+# ------- Processing -------
+
+
+@pytest.fixture
+def dummy_tokenizer():
+    class DummyTokenizer:
+        def convert_ids_to_tokens(self, ids):
+            return [f"token_{id}" for id in ids]
+
+    return DummyTokenizer()
+
+
+@pytest.fixture
+def dummy_processor(dummy_tokenizer):
+    class DummyProcessor:
+        tokenizer = dummy_tokenizer
+
+    return DummyProcessor()
+
+
 # -------Models -------
 
 
@@ -69,19 +89,6 @@ def build_model(build_model_config):
 # -------Saliency grid -----
 
 
-class DummySaliencyGrid:
-    def __init__(self, data):
-        self.data = data
-
-    def map(self, *args, **kwargs):
-        return self.data
-
-
-@pytest.fixture
-def dummy_sal_grid():
-    return DummySaliencyGrid(data="dummy")
-
-
 class DummyLayout(SequenceLayout):
     def __init__(
         self,
@@ -100,21 +107,6 @@ class DummyLayout(SequenceLayout):
 
 @pytest.fixture
 def build_sample_grid():
-    """
-    Builds SaliencyGrids as follows:
-    Batch 0:
-        Image 0: starts at 0, size (2, 2) → occupies indices [0, 4)
-        Image 1: starts at 4, size (3, 3) → occupies indices [4, 13)
-        Gen tokens: 5 → token indices [13, 18)
-        Gen Mask: [1, 1, 1, 1, 1]
-    Batch 1:
-        Image 0: starts at 0, size (1, 1) → occupies indices [0, 1)
-        Gen tokens: 2 → token indices [1, 3)
-        Gen Mask: [1, 1, 0, 0, 0]
-    Tensor:
-        Shape: (B=2, T_gen=5, T_img=13) → accommodates all tokens and image patches
-        Values: Sequential integers for easy verification
-    """
 
     def _build(
         batch_size: int, images: list[list[ImageSpec]], gen_tokens: list[int]
@@ -143,18 +135,44 @@ def build_sample_grid():
             image_token_offsets=[[spec.start for spec in batch] for batch in images],
             gen_mask=torch.tensor(
                 [
-                    [1] * num_tokens + [0] * (max_gen_tokens - num_tokens)
+                    [True] * num_tokens + [False] * (max_gen_tokens - num_tokens)
                     for num_tokens in gen_tokens
                 ]
             ),
             gen_token_idx=torch.tensor(
                 [
-                    list(range(gen_start_indices[i], gen_start_indices[i] + num_tokens))
-                    + [0] * (max_gen_tokens - num_tokens)
-                    for i, num_tokens in enumerate(gen_tokens)
+                    list(range(gen_start, gen_start + num_tokens))
+                    + [-1] * (max_gen_tokens - num_tokens)
+                    for gen_start, num_tokens in zip(gen_start_indices, gen_tokens, strict=True)
                 ]
             ),
         )
         return SaliencyGrid(tensor=tensor, layout=layout)
 
     return _build
+
+
+@pytest.fixture
+def dummy_saliency_grid(build_sample_grid):
+    """Builds SaliencyGrids as follows:
+    Batch 0:
+        Image 0: starts at 0, size (2, 2) → occupies indices [0, 4)
+        Image 1: starts at 4, size (3, 3) → occupies indices [4, 13)
+        Gen tokens: 5 → token indices [13, 18)
+        Gen Mask: [1, 1, 1, 1, 1]
+    Batch 1:
+        Image 0: starts at 0, size (1, 1) → occupies indices [0, 1)
+        Gen tokens: 2 → token indices [1, 3)
+        Gen Mask: [1, 1, 0, 0, 0]
+    Tensor:
+        Shape: (B=2, T_gen=5, T_img=13) → accommodates all tokens and image patches
+        Values: Sequential integers for easy verification
+    """
+    return build_sample_grid(
+        batch_size=2,
+        images=[
+            [ImageSpec(start=0, size=(2, 2)), ImageSpec(start=4, size=(3, 3))],
+            [ImageSpec(start=0, size=(1, 1))],
+        ],
+        gen_tokens=[5, 2],
+    )
