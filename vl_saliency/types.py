@@ -64,7 +64,7 @@ class HeadOp(Hashable, Protocol):
     def __call__(
         self,
         scores: Float[Tensor, "B H T_gen T_img"],
-        mask: Bool[Tensor, "B 1 T_gen T_img"],
+        mask: Bool[Tensor, "B 1 T_gen T_img"] | None = None,
     ) -> Float[Tensor, "B H T_gen T_img"]: ...
 
 
@@ -82,5 +82,5 @@ class LayerOp(Hashable, Protocol):
     def __call__(
         self,
         scores: Float[Tensor, "B T_gen T_img"],
-        mask: Bool[Tensor, "B T_gen T_img"],
+        mask: Bool[Tensor, "B T_gen T_img"] | None = None,
     ) -> Float[Tensor, "B T_gen T_img"]: ...

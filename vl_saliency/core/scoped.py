@@ -54,7 +54,7 @@ class ScopedSaliencyGrid:
 
         self._tok: PreTrainedTokenizerBase | None = (
             processor.tokenizer  # type: ignore[attr-defined]
-            if hasattr(processor, "tokenizer")
+            if processor and hasattr(processor, "tokenizer")
             else processor
         )
 

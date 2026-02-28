@@ -12,7 +12,9 @@ def make_op(
     fn: Callable[[Float[Tensor, "..."]], Float[Tensor, "..."]],
 ) -> HeadOp | LayerOp:
     @fusable
-    def op(scores: Float[Tensor, "..."], mask: Bool[Tensor, "..."]) -> Float[Tensor, "..."]:
+    def op(
+        scores: Float[Tensor, "..."], mask: Bool[Tensor, "..."] | None = None
+    ) -> Float[Tensor, "..."]:
         scores = fn(scores)
         return scores
 
@@ -36,8 +38,11 @@ def normalize(x: Float[Tensor, "..."]) -> Float[Tensor, "..."]:
 
 
 @fusable
-def softmax(scores: Float[Tensor, "..."], mask: Bool[Tensor, "..."]) -> Float[Tensor, "..."]:
+def softmax(
+    scores: Float[Tensor, "..."], mask: Bool[Tensor, "..."] | None = None
+) -> Float[Tensor, "..."]:
     """Applies masked softmax to the saliency scores on the last two dimensions."""
-    masked_scores = scores.masked_fill(~mask, float("-inf"))
-    flat = masked_scores.flatten(start_dim=-2)
+    if mask is not None:
+        scores = scores.masked_fill(~mask, float("-inf"))
+    flat = scores.flatten(start_dim=-2)
     return torch.softmax(flat, dim=-1).reshape_as(scores)

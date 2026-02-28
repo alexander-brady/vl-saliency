@@ -15,6 +15,16 @@ def test_binarize_fixed_threshold(sample):
     assert torch.allclose(out, expected)
 
 
+def test_binarize_mean_threshold_no_mask(sample):
+    x, _ = sample
+    op = Binarize(threshold="mean")
+    out = op(x)
+
+    threshold = x.mean()
+    expected = (x > threshold).float()
+    assert torch.allclose(out, expected)
+
+
 def test_binarize_mean_threshold(sample):
     x, mask = sample
     op = Binarize(threshold="mean")
@@ -66,6 +76,26 @@ def test_soft_binarize_empty_mask(sample):
 
     expected = torch.sigmoid((x - 0.0) * 10.0)  # Threshold defaults to 0.0
     assert torch.allclose(out, expected)
+
+
+def test_soft_binarize_no_mask(sample):
+    x, _ = sample
+    op = SoftBinarize(threshold="mean", softness=10.0)
+    out = op(x)
+
+    threshold = x.mean()
+    expected = torch.sigmoid((x - threshold) * 10.0)
+    assert torch.allclose(out, expected)
+
+
+def test_soft_binarize_differentiable(sample):
+    x, mask = sample
+    x.requires_grad_()
+    op = SoftBinarize(threshold=1.0, softness=10.0)
+    out = op(x, mask)
+
+    out.sum().backward()  # Should not raise an error
+    assert x.grad is not None
 
 
 # ------- GaussianSmoothing -------

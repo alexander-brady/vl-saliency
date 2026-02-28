@@ -14,10 +14,12 @@ class Binarize:
         self.threshold: float | Literal["mean"] = threshold
 
     def __call__(
-        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."]
+        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."] | None = None
     ) -> Float[torch.Tensor, "..."]:
         if self.threshold == "mean":
-            if mask.any():
+            if mask is None:
+                threshold = scores.mean().detach()
+            elif mask.any():
                 threshold = scores[mask].mean().detach()
             else:
                 threshold = torch.zeros((), device=scores.device, dtype=scores.dtype)
@@ -35,10 +37,12 @@ class SoftBinarize(FusableMixin):
         self.softness = softness
 
     def __call__(
-        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."]
+        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."] | None = None
     ) -> Float[torch.Tensor, "..."]:
         if self.threshold == "mean":
-            if mask.any():
+            if mask is None:
+                threshold = scores.mean().detach()
+            elif mask.any():
                 threshold = scores[mask].mean().detach()
             else:
                 threshold = torch.zeros((), device=scores.device, dtype=scores.dtype)
@@ -67,7 +71,7 @@ class GaussianSmoothing(FusableMixin):
         return kernel / kernel.sum()
 
     def __call__(
-        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."]
+        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."] | None = None
     ) -> Float[torch.Tensor, "..."]:
         """Applies Gaussian smoothing to the input saliency map. Requires Torchvision."""
 
@@ -97,7 +101,7 @@ class Upscale(FusableMixin):
         self.mode = mode
 
     def __call__(
-        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."]
+        self, scores: Float[torch.Tensor, "..."], mask: Bool[torch.Tensor, "..."] | None = None
     ) -> Float[torch.Tensor, "..."]:
         squeeze = scores.ndim < 4  # Check if input is already in (N, C, H, W) format
         if squeeze:

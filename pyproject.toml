@@ -16,7 +16,6 @@ requires-python = ">=3.12"
 
 dependencies = [
     "jaxtyping>=0.3.9",
-    "pillow>=12.0.0",
     "torch>=2.8.0",
     "transformers>=4.57.1",
 ]
@@ -28,6 +27,10 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.0",
+    "vl-saliency[viz]",
+]
+viz = [
+    "matplotlib>=3.10.8",
 ]
 
 [project.urls]
@@ -58,6 +61,7 @@ files = ["vl_saliency", "tests"]
 exclude = ["\\.venv", "env", "build", "dist"]
 follow_imports = "skip"  # don't analyze third-party libs
 ignore_missing_imports = true
+disable_error_code = ["name-defined"]  # Handled by ruff
 
 [tool.coverage.report]
 omit = [
