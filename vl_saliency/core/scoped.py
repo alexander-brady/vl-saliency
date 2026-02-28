@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, overload, runtime_checkable
 
 from jaxtyping import Float, Int
 from torch import Tensor
@@ -138,6 +138,36 @@ class ScopedSaliencyGrid:
         map = self.map(token_idx)
         image = image if image is not None else self.image
         return plot(map, image=image, **plot_kwargs)
+
+    @overload
+    def visualize_tokens(self, return_html: Literal[True]) -> str: ...
+
+    @overload
+    def visualize_tokens(self, return_html: Literal[False] = False) -> None: ...
+
+    def visualize_tokens(self, return_html: bool = False) -> str | None:
+        """Renders the input tokens for the scoped image as HTML with tooltips showing token IDs and decoded text. Requires input IDs and a tokenizer to be available.
+
+        Args:
+            return_html (bool, optional): Return the rendered HTML string instead of displaying it. Defaults to False.
+        """
+        if self.input_ids is None or self._tok is None:
+            raise ValueError("Input IDs and tokenizer are required to visualize tokens.")
+
+        skip_tokens = (
+            self.saliency_grid._layout.pad_token_id,
+            self.saliency_grid._layout.image_token_id,
+        )
+        from vl_saliency.viz.tokens import render_token_ids
+
+        return render_token_ids(
+            token_ids=self.input_ids.tolist(),
+            processor=self._tok,
+            return_html=return_html,  # type: ignore
+            gen_start=self.gen_start_idx,
+            skip_tokens=skip_tokens,
+            only_number_generated=True,
+        )
 
     def __getitem__(self, token_idx: int | Selector) -> Float[Tensor, "H W"]:
         """Map for the specified token index of the scoped image."""

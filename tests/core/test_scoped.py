@@ -141,3 +141,27 @@ def test_scoped_plot(dummy_saliency_grid):
     fig_array = fig_to_array(fig)
     expected_array = fig_to_array(expected_fig)
     assert np.allclose(fig_array, expected_array)
+
+
+def test_scoped_visualize(dummy_saliency_grid, dummy_tokenizer):
+    scoped = ScopedSaliencyGrid(dummy_saliency_grid, batch_idx=1, image_idx=0)
+
+    with pytest.raises(ValueError):
+        _ = scoped.visualize_tokens()  # no input_ids or processor/tokenizer provided
+    scoped.input_ids = dummy_input_ids()[1]  # batch 1 input ids
+
+    scoped._tok = dummy_tokenizer
+    out = scoped.visualize_tokens(return_html=True)
+
+    from vl_saliency.viz.tokens import render_token_ids
+
+    expected_out = render_token_ids(
+        token_ids=dummy_input_ids()[1].tolist(),
+        processor=dummy_tokenizer,
+        return_html=True,
+        skip_tokens=(0, -1),  # skip image token and padding
+        gen_start=1,
+        only_number_generated=True,
+    )
+
+    assert out == expected_out

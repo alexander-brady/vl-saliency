@@ -40,8 +40,13 @@ def build_config():
 @pytest.fixture
 def dummy_tokenizer():
     class DummyTokenizer:
-        def convert_ids_to_tokens(self, ids):
-            return [f"token_{id}" for id in ids]
+        def convert_ids_to_tokens(self, ids, skip_special_tokens: bool = False):
+            if skip_special_tokens:
+                ids = [id for id in ids if id not in self.all_special_ids]
+            return [self.id2tok.get(id, f"token_{id}") for id in ids]
+
+        all_special_ids = [-1]  # Special token IDs for testing
+        id2tok = {}  # Mapping of token IDs to token strings, can be overridden in tests
 
     return DummyTokenizer()
 
@@ -103,6 +108,9 @@ class DummyLayout(SequenceLayout):
         self.image_token_offsets = image_token_offsets
         self.gen_mask = gen_mask
         self.gen_token_idx = gen_token_idx
+
+        self.pad_token_id = -1
+        self.image_token_id = 0
 
 
 @pytest.fixture

@@ -27,6 +27,9 @@ class SequenceLayout:
         self.device = input_ids.device
         self.B, self.S = input_ids.shape
 
+        self.pad_token_id = config.pad_token_id
+        self.image_token_id = config.image_token_id
+
         is_img, is_gen = self._build_masks(input_ids, config.pad_token_id, config.image_token_id)
         self.img_token_idx, self.img_mask, self.T_img = self._compact_mask_indices(is_img)
         self.gen_token_idx, self.gen_mask, self.T_gen = self._compact_mask_indices(is_gen)
