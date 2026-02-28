@@ -4,6 +4,7 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+from vl_saliency.ops.fuse import is_fusable
 from vl_saliency.types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
 
 from .reduce import _HEAD_REDUCE, _LAYER_REDUCE
@@ -57,7 +58,7 @@ def saliency_qk_compiled(
 ) -> SaliencyQKFunction:
     # For now: if head_op or layer_op is not None, we can't compile because they might not be pure.
     # TODO: Add support for common operations like ReLU, LayerNorm, etc. and compile those.
-    full_graph = head_op is None and layer_op is None
+    full_graph = is_fusable(head_op) and is_fusable(layer_op)
     return torch.compile(
         saliency_qk_eager(head_reduce, layer_reduce, head_op, layer_op),
         mode="max-autotune",
