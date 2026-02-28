@@ -8,6 +8,9 @@ from torch import Tensor
 from transformers import PreTrainedTokenizerBase, ProcessorMixin
 
 if TYPE_CHECKING:
+    from matplotlib.figure import Figure
+    from PIL import Image
+
     from vl_saliency.core.grid import SaliencyGrid
 
 
@@ -28,6 +31,7 @@ class ScopedSaliencyGrid:
     - batch_idx: Optional batch index to scope to. If None, defaults to 0.
     - image_idx: Optional image index to scope to. If None, defaults to 0
     - input_ids: Optional input IDs tensor for token decoding (shape: [B, T] | [T]).
+    - image: Optional PIL image corresponding to the scoped image index, for visualization purposes.
     - processor: Optional processor with a tokenizer for token decoding. If not provided, token decoding
         will not be available.
     """
@@ -39,11 +43,13 @@ class ScopedSaliencyGrid:
         batch_idx: int | None = None,
         image_idx: int | None = None,
         input_ids: Int[Tensor, "B T"] | Int[Tensor, " T"] | None = None,
+        image: Image.Image | None = None,
         processor: ProcessorMixin | PreTrainedTokenizerBase | None = None,
     ):
         self.batch_idx, self.image_idx, _ = saliency_grid._normalize_idx_input(
             batch_idx=batch_idx, image_idx=image_idx
         )
+        self.image = image
         self.saliency_grid = saliency_grid
 
         self.input_ids = (
@@ -112,6 +118,26 @@ class ScopedSaliencyGrid:
         if isinstance(token_idx, Selector):
             token_idx = token_idx(self)
         return self.saliency_grid.map(self.batch_idx, self.image_idx, token_idx)
+
+    def plot(
+        self, token_idx: int | Selector, image: Image.Image | None = None, **plot_kwargs
+    ) -> Figure:
+        """
+        Plot the saliency map for the specified token index of the scoped image, optionally overlaying it on a provided/scoped image.
+
+        Args:
+        - token_idx: The token index or a Selector to specify which token's saliency map to plot.
+        - image: Optional PIL image to overlay the saliency map on. If None, uses the image associated with the scoped grid if available.
+        - plot_kwargs: Additional keyword arguments to pass to matplotlib's plotting function for customizing the visualization.
+
+        Returns:
+        - Figure: A matplotlib Figure object containing the plotted saliency map.
+        """
+        from vl_saliency.viz.overlay import plot
+
+        map = self.map(token_idx)
+        image = image if image is not None else self.image
+        return plot(map, image=image, **plot_kwargs)
 
     def __getitem__(self, token_idx: int | Selector) -> Float[Tensor, "H W"]:
         """Map for the specified token index of the scoped image."""

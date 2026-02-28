@@ -1,5 +1,8 @@
+import matplotlib
+import numpy as np
 import pytest
 import torch
+from PIL import Image
 
 from vl_saliency.core.scoped import ScopedSaliencyGrid
 
@@ -115,3 +118,26 @@ def test_scoped_selector(dummy_saliency_grid):
     assert torch.equal(scoped.map(selector), scoped.map(0))
     assert torch.equal(scoped[0], scoped[selector])
     assert torch.equal(scoped[selector], scoped[0])
+
+
+# ------- Visualization Tests -------
+
+matplotlib.use("Agg")
+
+
+def test_scoped_plot(dummy_saliency_grid):
+    image = Image.new("RGB", (16, 16), color="white")
+    scoped = ScopedSaliencyGrid(dummy_saliency_grid, batch_idx=1, image_idx=0, image=image)
+    fig = scoped.plot(0, image=image, cmap="viridis", alpha=0.5)
+
+    from vl_saliency.viz.overlay import plot
+
+    expected_fig = plot(scoped.map(0), image=image, cmap="viridis", alpha=0.5)
+
+    def fig_to_array(fig):
+        fig.canvas.draw()
+        return np.asarray(fig.canvas.buffer_rgba())
+
+    fig_array = fig_to_array(fig)
+    expected_array = fig_to_array(expected_fig)
+    assert np.allclose(fig_array, expected_array)
