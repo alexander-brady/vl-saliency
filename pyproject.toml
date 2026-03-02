@@ -28,11 +28,13 @@ dev = [
     "pytest>=8.4.2",
     "pytest-cov>=7.0.0",
     "ruff>=0.14.0",
-    "vl-saliency[viz]",
+    "vl-saliency[all]",
 ]
-viz = [
+all = [
     "matplotlib>=3.10.8",
+    "scipy>=1.17.1",
 ]
+
 
 [project.urls]
 github = "https://github.com/alexander-brady/vl-saliency"

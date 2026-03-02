@@ -50,9 +50,6 @@ def test_accum_init_saliency_reductions(monkeypatch, reduction, expected, build_
         assert torch.all(tensor == expected)
 
 
-import pytest
-
-
 @pytest.mark.parametrize(
     ["layer_reduce", "head_reduce", "expect_zero", "expected_shape"],
     [

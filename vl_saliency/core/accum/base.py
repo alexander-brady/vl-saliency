@@ -43,7 +43,7 @@ class SaliencyAccumulator:
         self._resolve_qk_fn(config)
 
         if config.head_reduce == "stack":
-            shape = (self.layout.B, 1, self.layout.T_gen, self.layout.T_img)
+            shape: tuple[int, ...] = (self.layout.B, 1, self.layout.T_gen, self.layout.T_img)
         else:
             shape = (self.layout.B, self.layout.T_gen, self.layout.T_img)
 
