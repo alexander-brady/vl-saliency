@@ -27,6 +27,7 @@ def build_config():
             head_op=None,
             backend="auto",
             attn_scale=0.25,
+            subset_select=None,
         )
         base.update(overrides)
         return SaliencyConfig(**base)

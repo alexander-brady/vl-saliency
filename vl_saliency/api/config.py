@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from transformers import PreTrainedModel
 
-from vl_saliency.types import Backend, HeadOp, ImagePatchFunction, LayerOp, Reduction
+from vl_saliency.types import Backend, HeadOp, ImagePatchFunction, LayerOp, Reduction, SelectionSpec
 from vl_saliency.utils.infer import (
     infer_attn_scale,
     infer_image_patch_fn,
@@ -34,6 +34,8 @@ class SaliencyConfig:
     """Function to reduce saliency across layers (e.g., 'mean', 'max')."""
     backend: Backend = "auto"
     """Backend to use for saliency computation. 'auto' will choose 'triton' if available, otherwise 'torch'."""
+    subset_select: SelectionSpec | None = None
+    """Optional specification for selecting a subset of layers or heads to accumulate saliency from. If None, saliency will be accumulated from all layers and heads."""
 
     @classmethod
     def from_model(
@@ -49,6 +51,7 @@ class SaliencyConfig:
         layer_op: LayerOp | None = None,
         layer_reduce: Reduction = "mean",
         backend: Backend = "auto",
+        subset_select: SelectionSpec | None = None,
     ) -> "SaliencyConfig":
         """Infers a SaliencyConfig from a given model and optional parameters."""
 
@@ -79,4 +82,5 @@ class SaliencyConfig:
             layer_op=layer_op,
             layer_reduce=layer_reduce,
             backend=backend,
+            subset_select=subset_select,
         )

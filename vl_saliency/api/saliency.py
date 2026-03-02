@@ -8,7 +8,7 @@ from vl_saliency.hooks.patch import (
     is_patched,
     restore_forward,
 )
-from vl_saliency.types import Backend, HeadOp, ImagePatchFunction, LayerOp, Reduction
+from vl_saliency.types import Backend, HeadOp, ImagePatchFunction, LayerOp, Reduction, SelectionSpec
 from vl_saliency.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -67,6 +67,7 @@ class Saliency:
         head_op: HeadOp | None = None,
         head_reduce: Reduction = "mean",
         backend: Backend = "auto",
+        subset_select: SelectionSpec | None = None,
     ): ...
 
     def __init__(
@@ -83,6 +84,7 @@ class Saliency:
         head_op: HeadOp | None = None,
         head_reduce: Reduction = "mean",
         backend: Backend = "auto",
+        subset_select: SelectionSpec | None = None,
     ):
         self.model = model
         self.config = config or SaliencyConfig.from_model(
@@ -96,6 +98,7 @@ class Saliency:
             head_op=head_op,
             head_reduce=head_reduce,
             backend=backend,
+            subset_select=subset_select,
         )
 
     def __enter__(self: Self) -> Self:

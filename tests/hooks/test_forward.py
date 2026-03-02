@@ -29,17 +29,17 @@ def build_accumulator(monkeypatch):
 
 @pytest.fixture(autouse=True)
 def patch_accumulator(monkeypatch):
-    monkeypatch.setattr(m, "SaliencyAccumulator", DummyAccumulator)
+    monkeypatch.setattr(m, "build_accumulator", lambda **kwargs: DummyAccumulator(**kwargs))
 
 
 # ------- Tests -----
 
 
-def test_build_forward_passes_trace(build_model, build_accumulator):
+def test_build_forward_passes_trace(build_model, build_accumulator, build_config):
     model = build_model(return_dict=True)
 
     forward = build_saliency_forward(
-        config="config", attn_implementation="attn_impl", forward=dummy_forward
+        config=build_config(), attn_implementation="attn_impl", forward=dummy_forward
     )
 
     out = forward(
@@ -66,12 +66,17 @@ def test_build_forward_passes_trace(build_model, build_accumulator):
     ],
 )
 def test_build_forward_respects_return_dict(
-    build_model, model_return_dict, forward_return_dict, expected_type, build_accumulator
+    build_model,
+    model_return_dict,
+    forward_return_dict,
+    expected_type,
+    build_accumulator,
+    build_config,
 ):
     model = build_model(return_dict=model_return_dict)
 
     forward = build_saliency_forward(
-        config="config", attn_implementation="attn_impl", forward=dummy_forward
+        config=build_config(), attn_implementation="attn_impl", forward=dummy_forward
     )
 
     out = forward(

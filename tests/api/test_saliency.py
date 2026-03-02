@@ -35,6 +35,7 @@ def test_saliency_kwarg_init(build_model, monkeypatch):
         head_op=None,
         head_reduce="mean",
         backend="auto",
+        subset_select=None,
     )
 
     model = build_model()

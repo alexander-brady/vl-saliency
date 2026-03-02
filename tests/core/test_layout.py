@@ -3,7 +3,7 @@ import torch
 
 from vl_saliency.core.layout import SequenceLayout
 
-# -------_build_masks tests -----
+# ------- _build_masks tests -----
 
 
 def test_layout_build_masks():
@@ -77,7 +77,7 @@ def test_layout_compact_all_false():
     assert compact_mask.shape == (2, 0)
 
 
-# -------_patch_shapes tests -----
+# ------- _patch_shapes tests -----
 
 
 def test_layout_patch_shapes_no_pixel_values():
@@ -160,7 +160,7 @@ def test_layout_image_offsets_multiple_images():
     ]
 
 
-# -------End-to-end test -----
+# ------- End-to-end test -----
 
 
 def test_token_layout_end_to_end(build_config):

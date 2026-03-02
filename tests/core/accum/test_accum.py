@@ -1,8 +1,8 @@
 import pytest
 import torch
 
-import vl_saliency.core.accum as m
-from vl_saliency.core.accum import SaliencyAccumulator
+import vl_saliency.core.accum.base as m
+from vl_saliency.core.accum.base import SaliencyAccumulator
 
 # -------Helper -----
 

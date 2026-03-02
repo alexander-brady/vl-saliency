@@ -71,7 +71,7 @@ class SaliencyAccumulator:
             saliency=self._saliency,
         )
 
-    def _init_saliency(self, shape: tuple[int, int, int], device: torch.device, dtype: torch.dtype):
+    def _init_saliency(self, shape: tuple[int, ...], device: torch.device, dtype: torch.dtype):
         """Initializes the saliency map tensor based on the specified reduction method."""
         match self.layer_reduce:
             case "mean" | "sum":

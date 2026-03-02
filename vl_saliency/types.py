@@ -1,5 +1,6 @@
-from collections.abc import Hashable
-from typing import Literal, ParamSpec, Protocol
+from collections.abc import Hashable, Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from typing import Literal, Protocol
 
 from jaxtyping import Bool, Float
 from torch import Tensor
@@ -8,10 +9,7 @@ type Reduction = Literal["mean", "sum", "max", "min", "prod"]
 type Backend = Literal["auto", "torch", "triton", "torch_eager"]
 
 
-P = ParamSpec("P")
-
-
-class ImagePatchFunction(Protocol[P]):
+class ImagePatchFunction[**P](Protocol):
     """Protocol for functions that return image patch shapes given input data."""
 
     def __call__(
@@ -84,3 +82,31 @@ class LayerOp(Hashable, Protocol):
         scores: Float[Tensor, "B T_gen T_img"],
         mask: Bool[Tensor, "B T_gen T_img"] | None = None,
     ) -> Float[Tensor, "B T_gen T_img"]: ...
+
+
+type SelectionSpec = LayerSelect | HeadSelect | Sequence[int] | Mapping[int, Sequence[int]] | None
+
+
+@dataclass(frozen=True)
+class LayerSelect:
+    """Configuration for selecting specific layers for saliency accumulation."""
+
+    layers: Sequence[int]
+    """Sequence of layer indices to include in saliency accumulation. For example, [0, 2] would select layers 0 and 2."""
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.layers)
+
+
+@dataclass(frozen=True)
+class HeadSelect:
+    """Configuration for selecting specific attention heads for saliency accumulation."""
+
+    heads: Mapping[int, Sequence[int]]
+    """Dictionary mapping layer indices to sequences of head indices. For example, {0: [0, 2], 1: [1]} would select heads 0 and 2 from layer 0, and head 1 from layer 1."""
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.heads)
+
+    def __getitem__(self, layer: int) -> Sequence[int]:
+        return self.heads[layer]

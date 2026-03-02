@@ -9,7 +9,7 @@ from transformers.utils.generic import ModelOutput
 
 from vl_saliency.api.config import SaliencyConfig
 from vl_saliency.api.out import SaliencyOutput
-from vl_saliency.core.accum import SaliencyAccumulator
+from vl_saliency.core.accum import build_accumulator
 
 
 def build_saliency_forward(
@@ -48,7 +48,7 @@ def build_saliency_forward(
         **kwargs,
     ) -> SaliencyOutput | tuple[Any, ...]:
 
-        trace = kwargs.get("saliency") or SaliencyAccumulator(
+        trace = kwargs.get("saliency") or build_accumulator(
             config=config,
             input_ids=input_ids,
             pixel_values=pixel_values,

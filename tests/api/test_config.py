@@ -39,7 +39,7 @@ def test_config_from_model_infer(build_config, build_model, monkeypatch):
             assert getattr(config, field) == getattr(expected, field)
 
     assert type(config.image_patch_fn) is type(expected.image_patch_fn)
-    assert config.image_patch_fn.patch_shape == expected.image_patch_fn.patch_shape
+    assert config.image_patch_fn.patch_shape == expected.image_patch_fn.patch_shape  # type: ignore
 
 
 def test_config_resolve_patch_fn(build_config, build_model):
