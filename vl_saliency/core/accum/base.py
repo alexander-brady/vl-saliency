@@ -87,12 +87,8 @@ class SaliencyAccumulator:
                 self._saliency = torch.full(shape, float("inf"), device=device, dtype=dtype)
             case "prod":
                 self._saliency = torch.ones(shape, device=device, dtype=dtype)
-            case "stack":
-                shape = (
-                    shape[0],
-                    0,
-                    *shape[1:],
-                )  # Layer dimension starts grows with each accumulation
+            case "stack":  # Layer dimension starts grows with each accumulation
+                shape = (shape[0], 0, *shape[1:])
                 self._saliency = torch.empty(shape, device=device, dtype=dtype)
 
     def _resolve_qk_fn(self, config: SaliencyConfig):

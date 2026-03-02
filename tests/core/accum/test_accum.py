@@ -50,6 +50,48 @@ def test_accum_init_saliency_reductions(monkeypatch, reduction, expected, build_
         assert torch.all(tensor == expected)
 
 
+import pytest
+
+
+@pytest.mark.parametrize(
+    ["layer_reduce", "head_reduce", "expect_zero", "expected_shape"],
+    [
+        ("stack", "mean", False, (1, 0)),
+        ("stack", "stack", False, (1, 0, 1)),
+        ("mean", "stack", True, (1, 1)),
+    ],
+)
+def test_accum_init_saliency_stack(
+    monkeypatch, build_config, layer_reduce, head_reduce, expect_zero, expected_shape
+):
+    input_ids, pixel_values = simple_input()
+
+    monkeypatch.setattr(m, "assign_auto", lambda *_, **__: "dummy")
+    monkeypatch.setattr(
+        m,
+        "get_qk_accumulator",
+        lambda **_: lambda **kw: kw["saliency"],
+    )
+
+    config = build_config(layer_reduce=layer_reduce, head_reduce=head_reduce)
+
+    trace = SaliencyAccumulator(
+        config=config,
+        input_ids=input_ids,
+        pixel_values=pixel_values,
+    )
+
+    tensor = trace._saliency
+    expected_shape = (*expected_shape, trace.layout.T_gen, trace.layout.T_img)
+
+    assert tensor.shape == expected_shape
+
+    if expect_zero:
+        assert torch.allclose(tensor, torch.zeros_like(tensor))
+    else:
+        assert tensor.numel() == 0
+
+
 @pytest.mark.parametrize(["reduction", "expected"], [("mean", 1.0), ("sum", 2.0)])
 def test_accum_accumulate(monkeypatch, build_config, reduction, expected):
 

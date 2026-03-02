@@ -97,7 +97,7 @@ def test_layer_reduce_stack(sample):
         (
             "stack",
             torch.zeros(2, 3, 4, 4),
-            torch.zeros(2, 4, 4), 
+            torch.zeros(2, 4, 4),
             torch.zeros(2, 4, 4, 4),
         ),
     ],
