@@ -29,6 +29,7 @@ def dummy_input_ids():
     batch_1 = [0] * 1 + [20, 21] + [-1] * 15  # 1 image token + 2 gen tokens + padding
     return torch.tensor([batch_0, batch_1])
 
+
 # ------- Scoped Saliency Grid Tests -------
 
 

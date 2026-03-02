@@ -18,6 +18,20 @@ def saliency_qk_eager(
     head_op: HeadOp | None,
     layer_op: LayerOp | None,
 ) -> SaliencyQKFunction:
+    """
+    Computes saliency scores based on query-key interactions for a single layer and
+    head configuration, with optional operations applied before reduction.
+
+    Args:
+        head_reduce (Reduction): Reduction method for head dimension (e.g., "sum", "mean")
+        layer_reduce (Reduction): Reduction method for layer dimension (e.g., "add", "max")
+        head_op (HeadOp | None): Optional operation to apply to head scores before reduction. If None, no operation is applied.
+        layer_op (LayerOp | None): Optional operation to apply to layer scores before reduction. If None, no operation is applied.
+
+    Returns:
+        SaliencyQKFunction: A function that computes saliency scores according to the specified reductions and operations.
+
+    """
     head_reduce_fn = _HEAD_REDUCE[head_reduce]
     layer_accum_fn = _LAYER_REDUCE[layer_reduce]
 
@@ -56,12 +70,24 @@ def saliency_qk_compiled(
     head_op: HeadOp | None,
     layer_op: LayerOp | None,
 ) -> SaliencyQKFunction:
-    # For now: if head_op or layer_op is not None, we can't compile because they might not be pure.
-    # TODO: Add support for common operations like ReLU, LayerNorm, etc. and compile those.
-    full_graph = is_fusable(head_op) and is_fusable(layer_op)
+    """
+    Compiles the saliency_qk function with the given reduction and optional head/layer operations.
+
+    Full graph fusion is enabled if both head_op and layer_op are marked as fusable, allowing for maximum optimization.
+
+    Args:
+        head_reduce (Reduction): Reduction method for head dimension (e.g., "sum", "mean")
+        layer_reduce (Reduction): Reduction method for layer dimension (e.g., "add", "max")
+        head_op (HeadOp | None): Optional operation to apply to head scores before reduction. If None, no operation is applied.
+        layer_op (LayerOp | None): Optional operation to apply to layer scores before reduction. If None, no operation is applied.
+
+    Returns:
+        SaliencyQKFunction: The compiled saliency_qk function.
+    """
+    fullgraph = is_fusable(head_op) and is_fusable(layer_op)
     return torch.compile(
         saliency_qk_eager(head_reduce, layer_reduce, head_op, layer_op),
         mode="max-autotune",
         dynamic=True,  # Variable sequence lengths and masking
-        fullgraph=full_graph,
+        fullgraph=fullgraph,
     )
