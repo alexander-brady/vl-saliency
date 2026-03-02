@@ -109,11 +109,11 @@ class ScopedSaliencyGrid:
         return self._tok.convert_ids_to_tokens(self.gen_tokens.tolist())  # type: ignore[union-attr]
 
     @property
-    def maps(self) -> Float[Tensor, "T H W"]:
+    def maps(self) -> Float[Tensor, "... T H W"]:
         """ "Saliency maps for all tokens of the scoped image."""
         return self.saliency_grid.maps_for_image(self.batch_idx, self.image_idx)
 
-    def map(self, token_idx: int | Selector) -> Float[Tensor, "H W"]:
+    def map(self, token_idx: int | Selector) -> Float[Tensor, "... H W"]:
         """Map for the specified token index of the scoped image."""
         if isinstance(token_idx, Selector):
             token_idx = token_idx(self)
@@ -169,6 +169,6 @@ class ScopedSaliencyGrid:
             only_number_generated=True,
         )
 
-    def __getitem__(self, token_idx: int | Selector) -> Float[Tensor, "H W"]:
+    def __getitem__(self, token_idx: int | Selector) -> Float[Tensor, "... H W"]:
         """Map for the specified token index of the scoped image."""
         return self.map(token_idx)

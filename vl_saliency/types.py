@@ -5,7 +5,7 @@ from typing import Literal, Protocol
 from jaxtyping import Bool, Float
 from torch import Tensor
 
-type Reduction = Literal["mean", "sum", "max", "min", "prod"]
+type Reduction = Literal["mean", "sum", "max", "min", "prod", "stack"]
 type Backend = Literal["auto", "torch", "triton", "torch_eager"]
 
 
@@ -45,7 +45,7 @@ class SaliencyQKFunction(Protocol):
         img_mask: Bool[Tensor, "B 1 T_img"],
         scale: float,
         saliency: Float[Tensor, "B T_gen T_img"],
-    ) -> Float[Tensor, "B T_gen T_img"]: ...
+    ) -> Float[Tensor, "B ... T_gen T_img"]: ...
 
 
 class HeadOp(Hashable, Protocol):
@@ -79,9 +79,9 @@ class LayerOp(Hashable, Protocol):
 
     def __call__(
         self,
-        scores: Float[Tensor, "B T_gen T_img"],
-        mask: Bool[Tensor, "B T_gen T_img"] | None = None,
-    ) -> Float[Tensor, "B T_gen T_img"]: ...
+        scores: Float[Tensor, "B *H T_gen T_img"],
+        mask: Bool[Tensor, "B *H T_gen T_img"] | None = None,
+    ) -> Float[Tensor, "B *H T_gen T_img"]: ...
 
 
 type SelectionSpec = LayerSelect | HeadSelect | Sequence[int] | Mapping[int, Sequence[int]] | None

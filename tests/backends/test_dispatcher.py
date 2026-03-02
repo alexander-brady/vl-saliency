@@ -61,7 +61,9 @@ def test_torch_eager_backend(monkeypatch):
     )
     assert fn == "eager"
 
+
 # ------- Test cases for assign_auto -------
+
 
 def test_torch_auto_backend(monkeypatch):
     monkeypatch.setattr(m, "assign_auto", lambda device, head_reduce: "torch_eager")
@@ -75,7 +77,7 @@ def test_torch_auto_backend(monkeypatch):
 def test_auto_selects_triton(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: True)
     assert m.assign_auto(torch.device("cuda"), head_reduce="sum") == "triton"
-    
+
     # Test that head_reduce affects selection
     assert m.assign_auto(torch.device("cuda"), head_reduce="prod") == "torch"
 
@@ -84,6 +86,7 @@ def test_auto_selects_torch(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: False)
     assert m.assign_auto(torch.device("cuda"), head_reduce="sum") == "torch"
     assert m.assign_auto(torch.device("cpu"), head_reduce="sum") == "torch_eager"
+
 
 # ------- Test cases for _is_triton_available -------
 def test_is_triton_available_import_error(monkeypatch):

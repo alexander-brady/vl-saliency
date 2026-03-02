@@ -24,7 +24,7 @@ class SaliencyGrid:
         image_maps(image_idx, batch_idx=None) → (T, H, W) saliency maps for all tokens for the specified image
     """
 
-    def __init__(self, tensor: Float[Tensor, "B T_gen T_img"], layout: SequenceLayout):
+    def __init__(self, tensor: Float[Tensor, "B ... T_gen T_img"], layout: SequenceLayout):
         self._tensor = tensor
         self._layout = layout
 
@@ -52,11 +52,11 @@ class SaliencyGrid:
         return self._num_tokens[batch_idx]
 
     @overload
-    def map(self, idx: Index, /) -> Float[Tensor, "H W"]: ...
+    def map(self, idx: Index, /) -> Float[Tensor, "... H W"]: ...
     @overload
     def map(
         self, c1: int, c2: int | None = None, c3: int | None = None, /
-    ) -> Float[Tensor, "H W"]: ...
+    ) -> Float[Tensor, "... H W"]: ...
     @overload
     def map(
         self,
@@ -65,9 +65,9 @@ class SaliencyGrid:
         batch_idx: int | None = None,
         image_idx: int | None = None,
         token_idx: int | None = None,
-    ) -> Float[Tensor, "H W"]: ...
+    ) -> Float[Tensor, "... H W"]: ...
 
-    def map(self, *args, **kwargs) -> Float[Tensor, "H W"]:
+    def map(self, *args, **kwargs) -> Float[Tensor, "... H W"]:
         """
         Retrieves the saliency map for a specific image token index and batch item.
 
@@ -87,19 +87,19 @@ class SaliencyGrid:
         H, W = self._layout.patch_shapes[batch_idx][image_idx]
         start = self._layout.image_token_offsets[batch_idx][image_idx]
 
-        flat = self._tensor[batch_idx, token_idx, start : start + H * W]  # [H * W]
+        flat = self._tensor[batch_idx, ..., token_idx, start : start + H * W]  # [H * W]
         return flat.view(H, W)
 
     @overload
-    def maps_for_image(self, idx: Index, /) -> Float[Tensor, "T H W"]: ...
+    def maps_for_image(self, idx: Index, /) -> Float[Tensor, "... T H W"]: ...
     @overload
-    def maps_for_image(self, c1: int, c2: int | None = None, /) -> Float[Tensor, "T H W"]: ...
+    def maps_for_image(self, c1: int, c2: int | None = None, /) -> Float[Tensor, "... T H W"]: ...
     @overload
     def maps_for_image(
         self, /, *, batch_idx: int | None = None, image_idx: int | None = None
-    ) -> Float[Tensor, "T H W"]: ...
+    ) -> Float[Tensor, "... T H W"]: ...
 
-    def maps_for_image(self, *args, **kwargs) -> Float[Tensor, "T H W"]:
+    def maps_for_image(self, *args, **kwargs) -> Float[Tensor, "... T H W"]:
         """
         Retrieves the saliency maps for all generated tokens for a specific image and batch item.
 
@@ -116,7 +116,7 @@ class SaliencyGrid:
 
         H, W = self._layout.patch_shapes[batch_idx][image_idx]
         start = self._layout.image_token_offsets[batch_idx][image_idx]
-        flat = self._tensor[batch_idx, :n_tokens, start : start + H * W]  # [n_tokens, H * W]
+        flat = self._tensor[batch_idx, ..., :n_tokens, start : start + H * W]  # [n_tokens, H * W]
         return flat.view(n_tokens, H, W)
 
     @overload
@@ -165,7 +165,7 @@ class SaliencyGrid:
             self, batch_idx=batch_idx, image_idx=image_idx, input_ids=input_ids, processor=processor
         )
 
-    def __getitem__(self, idx: IndexLike) -> Float[Tensor, "H W"]:
+    def __getitem__(self, idx: IndexLike) -> Float[Tensor, "... H W"]:
         """
         Direct indexing to retrieve the saliency map.
 

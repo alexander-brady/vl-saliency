@@ -66,6 +66,21 @@ def test_head_reduce_prod(sample):
     assert torch.allclose(out, expected)
 
 
+def test_layer_reduce_stack(sample):
+    scores, mask = sample
+    out = _HEAD_REDUCE["stack"](scores, mask)
+    expected = torch.tensor(
+        [
+            [
+                [[1.0, 0.0], [3.0, 4.0]],
+                [[5.0, 0.0], [7.0, 8.0]],
+            ]
+        ]
+    )  # input masked
+    print(out)
+    assert torch.allclose(out, expected)
+
+
 @pytest.mark.parametrize(
     "name,a,b,expected",
     [
@@ -79,6 +94,12 @@ def test_head_reduce_prod(sample):
         ("max", torch.tensor([[1.0]]), torch.tensor([[2.0]]), torch.tensor([[2.0]])),
         ("min", torch.tensor([[1.0]]), torch.tensor([[2.0]]), torch.tensor([[1.0]])),
         ("prod", torch.tensor([[3.0]]), torch.tensor([[2.0]]), torch.tensor([[6.0]])),
+        (
+            "stack",
+            torch.zeros(2, 3, 4, 4),
+            torch.zeros(2, 4, 4), 
+            torch.zeros(2, 4, 4, 4),
+        ),
     ],
 )
 def test_layer_reduce(name, a, b, expected):

@@ -44,11 +44,24 @@ def _reduce_prod(
     return masked_scores.prod(dim=1)  # [B, T_gen, T_img]
 
 
+def _stack_head(
+    scores: Float[Tensor, "B H T_gen T_img"], mask: Bool[Tensor, "B 1 T_gen T_img"]
+) -> Float[Tensor, "B H T_gen T_img"]:
+    masked_scores = scores * mask
+    return masked_scores  # [B, H, T_gen, T_img]
+
+
+def _stack_layer(
+    base: Float[Tensor, "B L ... T_gen T_img"], new: Float[Tensor, "B L T_gen T_img"]
+) -> Float[Tensor, "B L+1 ... T_gen T_img"]:
+    return torch.cat([base, new.unsqueeze(1)], dim=1)  # [B, L+1, ... T_gen T_img]
+
+
 _HEAD_REDUCE: MappingProxyType[
     Reduction,
     Callable[
         [Float[Tensor, "B H T_gen T_img"], Bool[Tensor, "B 1 T_gen T_img"]],
-        Float[Tensor, "B T_gen T_img"],
+        Float[Tensor, "B ... T_gen T_img"],
     ],
 ] = MappingProxyType(
     {
@@ -57,14 +70,15 @@ _HEAD_REDUCE: MappingProxyType[
         "max": _reduce_max,
         "min": _reduce_min,
         "prod": _reduce_prod,
+        "stack": _stack_head,
     }
 )
 
 _LAYER_REDUCE: MappingProxyType[
     Reduction,
     Callable[
-        [Float[Tensor, "B T_gen T_img"], Float[Tensor, "B T_gen T_img"]],
-        Float[Tensor, "B T_gen T_img"],
+        [Float[Tensor, "B ... T_gen T_img"], Float[Tensor, "B ... L T_gen T_img"]],
+        Float[Tensor, "B ... T_gen T_img"],
     ],
 ] = MappingProxyType(
     {
@@ -73,6 +87,7 @@ _LAYER_REDUCE: MappingProxyType[
         "max": torch.maximum,
         "min": torch.minimum,
         "prod": torch.mul,
+        "stack": _stack_layer,
     }
 )
 

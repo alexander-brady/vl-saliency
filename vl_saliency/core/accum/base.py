@@ -42,9 +42,14 @@ class SaliencyAccumulator:
 
         self._resolve_qk_fn(config)
 
+        if config.head_reduce == "stack":
+            shape = (self.layout.B, 1, self.layout.T_gen, self.layout.T_img)
+        else:
+            shape = (self.layout.B, self.layout.T_gen, self.layout.T_img)
+
         self._saliency: Float[Tensor, "B T_gen T_img"]
         self._init_saliency(
-            shape=(self.layout.B, self.layout.T_gen, self.layout.T_img),
+            shape=shape,
             device=input_ids.device,
             dtype=torch.float32,
         )
@@ -82,6 +87,13 @@ class SaliencyAccumulator:
                 self._saliency = torch.full(shape, float("inf"), device=device, dtype=dtype)
             case "prod":
                 self._saliency = torch.ones(shape, device=device, dtype=dtype)
+            case "stack":
+                shape = (
+                    shape[0],
+                    0,
+                    *shape[1:],
+                )  # Layer dimension starts grows with each accumulation
+                self._saliency = torch.empty(shape, device=device, dtype=dtype)
 
     def _resolve_qk_fn(self, config: SaliencyConfig):
         """Initializes the backend function for saliency accumulation."""
