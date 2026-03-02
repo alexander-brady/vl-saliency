@@ -4,11 +4,10 @@ import torch
 from jaxtyping import Bool, Float, Int
 from torch import Tensor
 
+from vl_saliency.backends.reduce import _HEAD_REDUCE, _LAYER_REDUCE
+from vl_saliency.backends.torch.scores import _compute_scores
 from vl_saliency.ops.fuse import is_fusable
 from vl_saliency.types import HeadOp, LayerOp, Reduction, SaliencyQKFunction
-
-from .reduce import _HEAD_REDUCE, _LAYER_REDUCE
-from .scores import _compute_scores
 
 
 @cache

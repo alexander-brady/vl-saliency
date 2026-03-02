@@ -4,7 +4,7 @@ import torch
 import vl_saliency.core.accum.base as m
 from vl_saliency.core.accum.base import SaliencyAccumulator
 
-# -------Helper -----
+# ------- Helper -------
 
 
 def simple_input():
@@ -15,7 +15,7 @@ def simple_input():
     return input_ids, pixel_values
 
 
-# -------Behavior -----
+# ------- Behavior -------
 
 
 @pytest.mark.parametrize(
@@ -32,7 +32,7 @@ def test_accum_init_saliency_reductions(monkeypatch, reduction, expected, build_
     input_ids, pixel_values = simple_input()
 
     # stub backend resolution
-    monkeypatch.setattr(m, "assign_auto", lambda device: "dummy")
+    monkeypatch.setattr(m, "assign_auto", lambda *args, **kwargs: "dummy")
     monkeypatch.setattr(m, "get_qk_accumulator", lambda **kwargs: lambda **kw: kw["saliency"])
 
     config = build_config(layer_reduce=reduction)
@@ -53,7 +53,7 @@ def test_accum_init_saliency_reductions(monkeypatch, reduction, expected, build_
 @pytest.mark.parametrize(["reduction", "expected"], [("mean", 1.0), ("sum", 2.0)])
 def test_accum_accumulate(monkeypatch, build_config, reduction, expected):
 
-    monkeypatch.setattr(m, "assign_auto", lambda device: "dummy")
+    monkeypatch.setattr(m, "assign_auto", lambda *args, **kwargs: "dummy")
     monkeypatch.setattr(
         m, "get_qk_accumulator", lambda **kwargs: lambda *a, **kw: kw["saliency"] + 1
     )
@@ -91,8 +91,9 @@ def test_accum_resolve_auto(monkeypatch, build_config):
 
     called_with = {}
 
-    def mock_assign_auto(device):
+    def mock_assign_auto(device, head_reduce):
         called_with["device"] = device
+        called_with["head_reduce"] = head_reduce
         return "dummy"
 
     monkeypatch.setattr(m, "assign_auto", mock_assign_auto)
@@ -107,6 +108,7 @@ def test_accum_resolve_auto(monkeypatch, build_config):
     )
 
     assert called_with["device"] == input_ids.device
+    assert called_with["head_reduce"] == "mean"
     assert called_with["backend"] == "dummy"
 
 

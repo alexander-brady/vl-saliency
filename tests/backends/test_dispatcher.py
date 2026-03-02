@@ -38,12 +38,7 @@ def test_torch_backend(monkeypatch):
 
 
 def test_triton_backend(triton_available, monkeypatch):
-    try:
-        import vl_saliency.backends.triton as t
-    except ImportError:
-        pytest.skip("Triton not available")
-
-    monkeypatch.setattr(t, "saliency_qk", lambda *args, **kwargs: "triton")
+    monkeypatch.setattr(m, "saliency_qk_triton", lambda *args, **kwargs: "triton")
     fn = m.get_qk_accumulator(
         "triton", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
     )
@@ -66,9 +61,10 @@ def test_torch_eager_backend(monkeypatch):
     )
     assert fn == "eager"
 
+# ------- Test cases for assign_auto -------
 
 def test_torch_auto_backend(monkeypatch):
-    monkeypatch.setattr(m, "assign_auto", lambda device: "torch_eager")
+    monkeypatch.setattr(m, "assign_auto", lambda device, head_reduce: "torch_eager")
     monkeypatch.setattr(m, "saliency_qk_eager", lambda *args, **kwargs: "eager")
     fn = m.get_qk_accumulator(
         "auto", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
@@ -78,15 +74,18 @@ def test_torch_auto_backend(monkeypatch):
 
 def test_auto_selects_triton(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: True)
-    assert m.assign_auto(torch.device("cuda")) == "triton"
+    assert m.assign_auto(torch.device("cuda"), head_reduce="sum") == "triton"
+    
+    # Test that head_reduce affects selection
+    assert m.assign_auto(torch.device("cuda"), head_reduce="prod") == "torch"
 
 
 def test_auto_selects_torch(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: False)
-    assert m.assign_auto(torch.device("cuda")) == "torch"
-    assert m.assign_auto(torch.device("cpu")) == "torch_eager"
+    assert m.assign_auto(torch.device("cuda"), head_reduce="sum") == "torch"
+    assert m.assign_auto(torch.device("cpu"), head_reduce="sum") == "torch_eager"
 
-
+# ------- Test cases for _is_triton_available -------
 def test_is_triton_available_import_error(monkeypatch):
     monkeypatch.setattr("builtins.__import__", lambda *a, **k: (_ for _ in ()).throw(ImportError()))
     assert m._is_triton_available() is False

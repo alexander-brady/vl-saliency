@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from vl_saliency.backends.torch.reduce import _HEAD_REDUCE, _LAYER_REDUCE
+from vl_saliency.backends.reduce import _HEAD_REDUCE, _LAYER_REDUCE
 
 
 @pytest.fixture

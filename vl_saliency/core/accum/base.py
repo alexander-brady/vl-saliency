@@ -86,7 +86,7 @@ class SaliencyAccumulator:
     def _resolve_qk_fn(self, config: SaliencyConfig):
         """Initializes the backend function for saliency accumulation."""
         if config.backend == "auto":
-            backend = assign_auto(self.layout.device)
+            backend = assign_auto(self.layout.device, head_reduce=config.head_reduce)
             logger.info_once(f"Auto-assigned backend '{backend}'.")
         else:
             backend = config.backend
