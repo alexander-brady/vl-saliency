@@ -4,7 +4,7 @@ import torch
 import torch.nn.functional as F
 from jaxtyping import Bool, Float
 
-from vl_saliency.ops.fuse import FusableMixin
+from vl_saliency.ops.fusion import FusableMixin
 
 
 class Binarize:

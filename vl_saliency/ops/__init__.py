@@ -1,5 +1,4 @@
-from vl_saliency.ops.fn import absolute, normalize, relu, sigmoid, softmax, square
-from vl_saliency.ops.fuse import FusableMixin, fusable
+from vl_saliency.ops.functional import absolute, normalize, relu, sigmoid, softmax, square
 from vl_saliency.ops.spatial import Binarize, GaussianSmoothing, SoftBinarize, Upscale
 
 __all__ = [
@@ -12,7 +11,5 @@ __all__ = [
     "Binarize",
     "SoftBinarize",
     "GaussianSmoothing",
-    "fusable",
-    "FusableMixin",
     "Upscale",
 ]

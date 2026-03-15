@@ -1,10 +1,11 @@
 import pytest
 
+from vl_saliency.select.factories import absolute, from_end
 from vl_saliency.select.pos import AbsoluteIndex, ReverseIndex
 
 
 def test_absolute_index_selection(dummy_saliency_grid):
-    scoped = dummy_saliency_grid.scope(batch_idx=1, image_idx=0)
+    scoped = dummy_saliency_grid.view(batch_idx=1, image_idx=0)
 
     # Gen Indices: [1, 2]
     # All indices: range(3)
@@ -25,7 +26,7 @@ def test_absolute_index_selection(dummy_saliency_grid):
 
 
 def test_reverse_index_selection(dummy_saliency_grid):
-    scoped = dummy_saliency_grid.scope(batch_idx=1, image_idx=0)
+    scoped = dummy_saliency_grid.view(batch_idx=1, image_idx=0)
 
     # Gen Indices: [1, 2]
     # Reverse index 0 should select the last gen token (index 1 in gen tokens)
@@ -47,3 +48,27 @@ def test_reverse_index_selection(dummy_saliency_grid):
     with pytest.raises(IndexError):
         selector = ReverseIndex(offset_from_end=2)  # Out of bounds
         selector(scoped)
+
+
+def test_factories():
+    idx = absolute(5)
+
+    assert isinstance(idx, AbsoluteIndex)
+    assert idx.index == 5
+
+    assert repr(idx) == repr(AbsoluteIndex(5))
+
+    idx = from_end(2)
+
+    assert isinstance(idx, ReverseIndex)
+    assert idx.offset_from_end == 2
+
+    assert repr(idx) == repr(ReverseIndex(2))
+
+
+def test_pos_repr():
+    absolute = AbsoluteIndex(5)
+    assert "index=5" in repr(absolute)
+
+    reverse = ReverseIndex(5)
+    assert "offset_from_end=5" in repr(reverse)

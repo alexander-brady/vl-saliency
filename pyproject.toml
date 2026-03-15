@@ -30,6 +30,8 @@ dev = [
     "ruff>=0.14.0",
     "vl-saliency[all]",
 ]
+
+[project.optional-dependencies]
 all = [
     "matplotlib>=3.10.8",
     "scipy>=1.17.1",

@@ -1,4 +1,4 @@
-from vl_saliency.ops.fuse import FusableMixin, fusable, is_fusable
+from vl_saliency.ops.fusion import FusableMixin, fusable, is_fusable
 
 
 def test_fusable_decorator_marks_function():

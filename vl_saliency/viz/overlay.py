@@ -5,7 +5,7 @@ import torch
 from jaxtyping import Float
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure, SubFigure
-from PIL import Image
+from PIL.Image import Image
 
 from vl_saliency.ops import Upscale, normalize
 
@@ -13,7 +13,7 @@ from vl_saliency.ops import Upscale, normalize
 @overload
 def plot(
     map: Float[torch.Tensor, "H W"],
-    image: Image.Image | None = None,
+    image: Image | None = None,
     *,
     ax: None = None,
     title: str | None = "Saliency Map",
@@ -26,7 +26,7 @@ def plot(
 @overload
 def plot(
     map: Float[torch.Tensor, "H W"],
-    image: Image.Image | None = None,
+    image: Image | None = None,
     *,
     ax: Axes,
     title: str | None = "Saliency Map",
@@ -37,7 +37,7 @@ def plot(
 
 def plot(
     map: Float[torch.Tensor, "H W"],
-    image: Image.Image | None = None,
+    image: Image | None = None,
     *,
     ax: Axes | None = None,
     title: str | None = "Saliency Map",

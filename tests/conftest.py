@@ -4,10 +4,9 @@ import pytest
 import torch
 from transformers import PreTrainedConfig
 
-from vl_saliency.api.config import SaliencyConfig
-from vl_saliency.core.grid import SaliencyGrid
-from vl_saliency.core.layout import SequenceLayout
-from vl_saliency.utils.patch_fns import FixedPatchLayout
+from vl_saliency._core.seq_layout import SequenceLayout
+from vl_saliency.config import SaliencyConfig, StaticPatchLayout
+from vl_saliency.maps import SaliencyGrid
 
 from .utils import ImageSpec
 
@@ -18,16 +17,16 @@ from .utils import ImageSpec
 def build_config():
     def _mk(**overrides) -> SaliencyConfig:
         base = dict[str, Any](
-            pad_token_id=0,
             image_token_id=1,
-            image_patch_fn=FixedPatchLayout(16, 16),
-            layer_reduce="mean",
-            layer_op=None,
-            head_reduce="mean",
-            head_op=None,
-            backend="auto",
+            pad_token_id=0,
+            patch_layout_fn=StaticPatchLayout(16, 16),
             attn_scale=0.25,
-            subset_select=None,
+            head_op=None,
+            head_reduce="mean",
+            layer_op=None,
+            layer_reduce="mean",
+            selection=None,
+            backend="auto",
         )
         base.update(overrides)
         return SaliencyConfig(**base)
