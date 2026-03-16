@@ -1,9 +1,8 @@
 import pytest
 import torch
 
-from vl_saliency.maps.index import Index
-
 from tests.utils import ImageSpec
+from vl_saliency.maps.index import Index
 
 # ------- Test Access Patterns -------
 

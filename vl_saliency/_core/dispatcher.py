@@ -50,6 +50,10 @@ def get_qk_accumulator(
             return get_qk_accumulator(
                 selected_backend, head_reduce, layer_reduce, head_op, layer_op
             )
+        case _:
+            raise ValueError(
+                f"Invalid backend: {backend}. Must be one of `auto`, `triton`, `torch`, `torch_eager`."
+            )
 
 
 @cache

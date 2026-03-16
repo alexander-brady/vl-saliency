@@ -62,6 +62,11 @@ def test_torch_eager_backend(monkeypatch):
     assert fn == "eager"
 
 
+def test_invalid_backend_raises():
+    with pytest.raises(ValueError):
+        m.get_qk_accumulator("<<<INVALID>>>")  # type: ignore
+
+
 # ------- Test cases for assign_auto -------
 
 
@@ -89,6 +94,8 @@ def test_auto_selects_torch(monkeypatch):
 
 
 # ------- Test cases for _is_triton_available -------
+
+
 def test_is_triton_available_import_error(monkeypatch):
     monkeypatch.setattr("builtins.__import__", lambda *a, **k: (_ for _ in ()).throw(ImportError()))
     assert m._is_triton_available() is False
