@@ -184,6 +184,9 @@ class SaliencyGrid:
         """
         return self.map(Index.from_indices(idx))
 
+    def __repr__(self) -> str:
+        return f"SaliencyGrid(batch_size={self.batch_size})"
+
     def _normalize_idx(self, kind: Literal["batch", "image"], idx: int | None) -> int:
         """Normalizes the index, handling the case where idx is None for single-{kind} scenarios."""
         if idx is None:

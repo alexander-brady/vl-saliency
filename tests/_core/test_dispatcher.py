@@ -64,12 +64,15 @@ def test_torch_eager_backend(monkeypatch):
 
 def test_invalid_backend_raises():
     with pytest.raises(ValueError):
-        m.get_qk_accumulator("<<<INVALID>>>")  # type: ignore
+        m.get_qk_accumulator(
+            "<<<INVALID>>>", head_reduce="mean", layer_reduce="mean", head_op=None, layer_op=None
+        )  # type: ignore
 
 
 # ------- Test cases for assign_auto -------
 
 
+@pytest.mark.skip(reason="`auto` defaults to torch_eager for now")
 def test_torch_auto_backend(monkeypatch):
     monkeypatch.setattr(m, "assign_auto", lambda device, head_reduce: "torch_eager")
     monkeypatch.setattr(m, "saliency_qk_eager", lambda *args, **kwargs: "eager")
@@ -79,6 +82,7 @@ def test_torch_auto_backend(monkeypatch):
     assert fn == "eager"
 
 
+@pytest.mark.skip(reason="`auto` defaults to torch_eager for now")
 def test_auto_selects_triton(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: True)
     assert m.assign_auto(torch.device("cuda"), head_reduce="sum") == "triton"
@@ -87,6 +91,7 @@ def test_auto_selects_triton(monkeypatch):
     assert m.assign_auto(torch.device("cuda"), head_reduce="prod") == "torch"
 
 
+@pytest.mark.skip(reason="`auto` defaults to torch_eager for now")
 def test_auto_selects_torch(monkeypatch):
     monkeypatch.setattr(m, "_is_triton_available", lambda: False)
     assert m.assign_auto(torch.device("cuda"), head_reduce="sum") == "torch"

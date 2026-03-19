@@ -25,3 +25,9 @@ uv.lock
 
 # Test
 .coverage
+
+# IDE Files
+.vscode/
+
+# Working files
+.scratch/

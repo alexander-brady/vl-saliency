@@ -173,6 +173,24 @@ class SaliencyView:
         """Map for the specified token index of the scoped image."""
         return self.map(token_idx)
 
+    def __repr__(self) -> str:
+        parts = [
+            f"batch_idx={self.batch_idx}",
+            f"image_idx={self.image_idx}",
+            f"num_tokens={self.num_tokens}",
+        ]
+
+        if self.input_ids is not None:
+            parts.append(f"input_ids=Tensor{tuple(self.input_ids.shape)}")
+
+        if self.image is not None:
+            parts.append(f"image={type(self.image).__name__}")
+
+        if self._tok is not None:
+            parts.append(f"tokenizer={type(self._tok).__name__}")
+
+        return f"SaliencyView({', '.join(parts)})"
+
     def __len__(self) -> int:
         return self.num_tokens
 

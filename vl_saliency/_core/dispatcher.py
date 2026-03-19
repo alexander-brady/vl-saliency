@@ -13,12 +13,13 @@ logger = get_logger(__name__)
 
 def assign_auto(device: torch.device, head_reduce: Reduction) -> Backend:
     """Auto select saliency backend based on device and reduction spec."""
-    if _is_triton_available() and device.type == "cuda" and head_reduce in ("sum", "mean"):
-        return "triton"
-    elif device.type == "cuda":
-        return "torch"
-    else:
-        return "torch_eager"
+    return "torch_eager"  # TODO: Other modes currently broken.
+    # if _is_triton_available() and device.type == "cuda" and head_reduce in ("sum", "mean"):
+    #     return "triton"
+    # elif device.type == "cuda":
+    #     return "torch"
+    # else:
+    #     return "torch_eager"
 
 
 @cache

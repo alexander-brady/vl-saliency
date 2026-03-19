@@ -132,6 +132,17 @@ def test_iter_selector(dummy_saliency_grid):
         assert torch.equal(scoped[i], map)
 
 
+def test_view_repr(dummy_saliency_grid):
+    input_ids = dummy_input_ids()
+    scoped = SaliencyView(dummy_saliency_grid, batch_idx=1, image_idx=0, input_ids=input_ids)
+
+    rep = repr(scoped)
+    assert "batch_idx=1" in rep
+    assert "image_idx=0" in rep
+    assert "input_ids" in rep
+    assert "image=" not in rep
+
+
 # ------- Visualization Tests -------
 
 matplotlib.use("Agg")

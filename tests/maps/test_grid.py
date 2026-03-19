@@ -128,3 +128,18 @@ def test_grid_invalid_indices(build_sample_grid):
 
     with pytest.raises(IndexError):
         grid[Index(batch_idx=0, image_idx=0, token_idx=None)]  # None token index is always invalid
+
+
+def test_grid_repr(build_sample_grid):
+    grid = build_sample_grid(
+        batch_size=2,
+        images=[
+            [ImageSpec(start=0, size=(2, 2)), ImageSpec(start=4, size=(3, 3))],
+            [ImageSpec(start=0, size=(1, 1))],
+        ],
+        gen_tokens=[3, 2],
+    )
+
+    rep = repr(grid)
+    assert "SaliencyGrid" in rep
+    assert "batch_size=2" in rep

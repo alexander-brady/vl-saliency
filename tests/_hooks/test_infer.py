@@ -81,6 +81,10 @@ def test_infer_attn_scale_head_dim(build_model_config):
     config = build_model_config(head_dim=64)
     assert m.infer_attn_scale(config) == 1 / (64**0.5)
 
+    text_config = build_model_config(head_dim=64)
+    config = build_model_config(text_config=text_config)
+    assert m.infer_attn_scale(config) == 1 / (64**0.5)
+
 
 def test_infer_attn_scale_hidden_size(build_model_config):
     config = build_model_config(hidden_size=512, num_attention_heads=8)

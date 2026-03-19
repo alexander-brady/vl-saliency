@@ -56,6 +56,8 @@ def infer_patch_layout_fn(config: PretrainedConfig) -> PatchLayoutFn:
 
 def infer_attn_scale(config: PreTrainedConfig) -> float:
     """Infers attention scaling factor from model config. Raises ValueError if inference fails."""
+    if hasattr(config, "text_config"):
+        config = config.text_config
     if hasattr(config, "head_dim"):
         head_dim = config.head_dim
     elif hasattr(config, "hidden_size") and hasattr(config, "num_attention_heads"):

@@ -65,7 +65,7 @@ def plot(
         upscale = Upscale(image.height, image.width, mode="bilinear")
         map = upscale(map.unsqueeze(0).unsqueeze(0)).squeeze(0).squeeze(0)
     map = normalize(map)
-    map_np = map.cpu().numpy()
+    map_np = map.detach().cpu().numpy()
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)

@@ -9,12 +9,12 @@ from vl_saliency.ops.fusion import fusable
 
 
 def make_op(
-    fn: Callable[[Float[Tensor, "..."]], Float[Tensor, "..."]],
+    fn: Callable[[Float[Tensor, "... H W"]], Float[Tensor, "... H W"]],
 ) -> HeadOp | LayerOp:
     @fusable
     def op(
-        scores: Float[Tensor, "..."], mask: Bool[Tensor, "..."] | None = None
-    ) -> Float[Tensor, "..."]:
+        scores: Float[Tensor, "... H W"], mask: Bool[Tensor, "... H W"] | None = None
+    ) -> Float[Tensor, "... H W"]:
         scores = fn(scores)
         return scores
 
@@ -30,7 +30,7 @@ sigmoid = make_op(torch.sigmoid)
 
 
 @make_op
-def normalize(x: Float[Tensor, "..."]) -> Float[Tensor, "..."]:
+def normalize(x: Float[Tensor, "... H W"]) -> Float[Tensor, "... H W"]:
     """Normalizes saliency scores to [0, 1] range on the last two dimensions."""
     min_val = x.amin(dim=(-2, -1), keepdim=True)
     max_val = x.amax(dim=(-2, -1), keepdim=True)
@@ -39,8 +39,8 @@ def normalize(x: Float[Tensor, "..."]) -> Float[Tensor, "..."]:
 
 @fusable
 def softmax(
-    scores: Float[Tensor, "..."], mask: Bool[Tensor, "..."] | None = None
-) -> Float[Tensor, "..."]:
+    scores: Float[Tensor, "... H W"], mask: Bool[Tensor, "... H W"] | None = None
+) -> Float[Tensor, "... H W"]:
     """Applies masked softmax to the saliency scores on the last two dimensions."""
     if mask is not None:
         scores = scores.masked_fill(~mask, float("-inf"))
