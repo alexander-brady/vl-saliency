@@ -111,7 +111,7 @@ class SaliencyView:
         """ "Saliency maps for all tokens of the scoped image."""
         return self.saliency_grid.maps_for_image(self.batch_idx, self.image_idx)
 
-    def map(self, token_idx: int | str | Selector) -> Float[Tensor, "... H W"]:
+    def map(self, token_idx: int | Selector | str) -> Float[Tensor, "... H W"]:
         """Map for the specified token index of the scoped image."""
         if isinstance(token_idx, str):
             from vl_saliency.select.factories import regex
@@ -121,12 +121,12 @@ class SaliencyView:
             token_idx = token_idx(self)
         return self.saliency_grid.map(self.batch_idx, self.image_idx, token_idx)
 
-    def plot(self, token_idx: int | Selector, image: Image | None = None, **plot_kwargs) -> Figure:
+    def plot(self, token_idx: int | Selector | str, image: Image | None = None, **plot_kwargs) -> Figure:
         """
         Plot the saliency map for the specified token index of the scoped image, optionally overlaying it on a provided/scoped image.
 
         Args:
-        - token_idx: The token index or a Selector to specify which token's saliency map to plot.
+        - token_idx: The token index, regex string or a Selector to specify which token's saliency map to plot.
         - image: Optional PIL image to overlay the saliency map on. If None, uses the image associated with the scoped grid if available.
         - plot_kwargs: Additional keyword arguments to pass to matplotlib's plotting function for customizing the visualization.
 
